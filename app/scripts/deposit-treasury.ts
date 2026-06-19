@@ -13,7 +13,7 @@ import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
 // ── Config ────────────────────────────────────────────────────────────────────
 const PACKAGE_ID = process.env.NEXT_PUBLIC_VELO402_PACKAGE_ID!;
 const TREASURY_ID = process.env.NEXT_PUBLIC_TREASURY_ID!;
-const DEPOSIT_MIST = BigInt(500_000_000); // 0.5 SUI
+const DEPOSIT_MIST = BigInt(100_000_000); // 0.1 SUI
 
 // ── Keypair ───────────────────────────────────────────────────────────────────
 // Re-uses the agent key for demo — replace with operator key for production.

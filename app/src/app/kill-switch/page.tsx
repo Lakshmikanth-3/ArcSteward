@@ -1,10 +1,6 @@
 "use client";
 /**
- * app/kill-switch/page.tsx
- *
- * The most over-built UI element in the app — per the PRD.
- * Two-step confirmation (type agent nickname), countdown to next epoch,
- * then calls /api/owner/revoke → returns unsigned PTB.
+ * app/kill-switch/page.tsx — Emergency Revocation — Botanical Glassmorphism Redesign
  */
 import { useState, useEffect } from "react";
 
@@ -23,23 +19,47 @@ export default function KillSwitchPage() {
   const [epochInfo, setEpochInfo] = useState<{
     current: number;
     remaining: number;
+    endTimestampMs?: number;
   } | null>(null);
+  const [timeRemainingStr, setTimeRemainingStr] = useState<string>("calculating...");
 
-  // Fetch current epoch for countdown
   useEffect(() => {
     fetch("/api/policy/status")
       .then((r) => r.json())
       .then((d) => {
-        if (d.currentEpoch) {
-          setEpochInfo({
-            current: d.currentEpoch,
-            remaining: d.epochsRemaining,
-          });
-        }
         if (d.policy?.id) setPolicyCapId(d.policy.id);
+        if (d.currentEpoch) {
+          fetch("/api/chain/epoch")
+            .then((r) => r.json())
+            .then((chainData) => {
+              setEpochInfo({
+                current: d.currentEpoch,
+                remaining: d.epochsRemaining,
+                endTimestampMs:
+                  chainData.epochStartTimestampMs + chainData.epochDurationMs,
+              });
+            })
+            .catch(() => {
+              setEpochInfo({ current: d.currentEpoch, remaining: d.epochsRemaining });
+            });
+        }
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!epochInfo?.endTimestampMs) return;
+    const updateTime = () => {
+      const diffMs = epochInfo.endTimestampMs! - Date.now();
+      if (diffMs <= 0) { setTimeRemainingStr("soon"); return; }
+      const hrs = Math.floor(diffMs / 3600000);
+      const mins = Math.floor((diffMs % 3600000) / 60000);
+      setTimeRemainingStr(`~${hrs}h ${mins}m`);
+    };
+    updateTime();
+    const id = setInterval(updateTime, 60000);
+    return () => clearInterval(id);
+  }, [epochInfo]);
 
   const handleRevoke = async () => {
     setError("");
@@ -62,41 +82,44 @@ export default function KillSwitchPage() {
   };
 
   return (
-    <div className="container" style={{ maxWidth: "640px" }}>
+    <div style={{ maxWidth: "640px", margin: "0 auto" }}>
       {/* Dramatic header */}
       <div
         className="fade-up"
-        style={{ marginBottom: "2.5rem", textAlign: "center" }}
+        style={{ textAlign: "center", marginBottom: "2.5rem" }}
       >
         <div
           style={{
-            width: "80px",
-            height: "80px",
+            width: "100px",
+            height: "100px",
             borderRadius: "50%",
-            background: "var(--accent-kill-g)",
-            border: "2px solid rgba(239,68,68,0.3)",
+            background: "rgba(147,0,10,0.15)",
+            border: "2px solid rgba(255,180,171,0.2)",
             display: "flex",
             alignItems: "center",
             justifyContent: "center",
-            fontSize: "2.5rem",
-            margin: "0 auto 1rem",
-            boxShadow: "0 0 60px rgba(239,68,68,0.25)",
+            margin: "0 auto 1.5rem",
             animation: "pulse-anim 3s ease-in-out infinite",
           }}
         >
-          🔴
+          <span
+            className="material-symbols-outlined"
+            style={{
+              fontSize: "48px",
+              color: "var(--error)",
+              fontVariationSettings: "'FILL' 1",
+            }}
+          >
+            power_settings_new
+          </span>
         </div>
-        <h1 style={{ color: "#ef4444" }}>Agent Kill Switch</h1>
-        <p
-          style={{
-            color: "var(--text-secondary)",
-            marginTop: "0.5rem",
-            fontSize: "0.9rem",
-          }}
-        >
+        <h1 style={{ color: "var(--error)", fontSize: "1.75rem", marginBottom: "0.5rem" }}>
+          Agent Kill Switch
+        </h1>
+        <p style={{ color: "var(--on-surface-variant)", fontSize: "0.95rem", maxWidth: "460px", margin: "0 auto" }}>
           Permanently revokes the agent's PolicyCap. One transaction. No undo.
           The next agent PTB will abort with{" "}
-          <span className="mono" style={{ color: "var(--accent-kill)" }}>
+          <span className="mono" style={{ color: "var(--error)" }}>
             EObjectNotFound
           </span>
           .
@@ -106,35 +129,37 @@ export default function KillSwitchPage() {
       {/* Epoch countdown */}
       {epochInfo && (
         <div
-          className="card fade-up-2 glow-red"
+          className="glass-panel edge-light fade-up-2"
           style={{
-            marginBottom: "1.5rem",
-            borderColor: "rgba(239,68,68,0.15)",
+            borderRadius: "16px",
+            padding: "1.5rem",
+            marginBottom: "1rem",
+            borderColor: "rgba(255,180,171,0.15)",
           }}
         >
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-            }}
-          >
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <div>
-              <div className="stat-label">Current Exposure Window</div>
-              <div
-                className="stat-value mono"
-                style={{ color: "var(--accent-amber)" }}
-              >
-                {epochInfo.remaining} epochs
+              <div className="label-sm" style={{ color: "var(--on-surface-variant)", marginBottom: "0.25rem" }}>
+                Current Exposure Window
               </div>
-              <div className="stat-sub">
+              <div
+                className="mono"
+                style={{ fontSize: "1.5rem", fontWeight: 700, color: "#fbbf24" }}
+              >
+                {timeRemainingStr}
+              </div>
+              <div style={{ fontSize: "0.78rem", color: "var(--on-surface-variant)", marginTop: "0.2rem" }}>
                 until PolicyCap auto-expires (epoch{" "}
                 {epochInfo.current + epochInfo.remaining})
               </div>
             </div>
             <div style={{ textAlign: "right" }}>
-              <div className="stat-label">Current Epoch</div>
-              <div className="stat-value mono">{epochInfo.current}</div>
+              <div className="label-sm" style={{ color: "var(--on-surface-variant)", marginBottom: "0.25rem" }}>
+                Current Epoch
+              </div>
+              <div className="mono" style={{ fontSize: "1.5rem", fontWeight: 700 }}>
+                {epochInfo.current}
+              </div>
             </div>
           </div>
           <div style={{ marginTop: "1rem" }}>
@@ -146,13 +171,7 @@ export default function KillSwitchPage() {
                 }}
               />
             </div>
-            <div
-              style={{
-                fontSize: "0.72rem",
-                color: "var(--text-muted)",
-                marginTop: "0.3rem",
-              }}
-            >
+            <div style={{ fontSize: "0.72rem", color: "var(--outline)", marginTop: "0.4rem" }}>
               Revoking now eliminates all remaining exposure instantly.
             </div>
           </div>
@@ -162,15 +181,36 @@ export default function KillSwitchPage() {
       {/* Step 1: Enter IDs */}
       {step === 1 && (
         <div
-          className="card fade-up-3"
+          className="glass-panel edge-light fade-up-3"
           style={{
-            borderColor: "rgba(239,68,68,0.1)",
+            borderRadius: "16px",
+            padding: "1.75rem",
+            borderColor: "rgba(255,180,171,0.1)",
             display: "flex",
             flexDirection: "column",
             gap: "1.25rem",
           }}
         >
-          <h3>Step 1 — Verify Ownership</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <div
+              style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                background: "rgba(147,0,10,0.15)",
+                border: "1px solid rgba(255,180,171,0.2)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                color: "var(--error)",
+              }}
+            >
+              1
+            </div>
+            <h3 style={{ fontSize: "1rem" }}>Verify Ownership</h3>
+          </div>
 
           <div>
             <label className="label">Your OwnerCap Object ID</label>
@@ -209,27 +249,49 @@ export default function KillSwitchPage() {
       {/* Step 2: Confirm */}
       {step === 2 && (
         <div
-          className="card fade-up-3"
+          className="glass-panel fade-up-3"
           style={{
-            borderColor: "rgba(239,68,68,0.3)",
+            borderRadius: "16px",
+            padding: "1.75rem",
+            border: "1px solid rgba(255,180,171,0.25)",
             display: "flex",
             flexDirection: "column",
             gap: "1.5rem",
           }}
         >
-          <h3>Step 2 — Confirm Revocation</h3>
+          <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
+            <div
+              style={{
+                width: "32px",
+                height: "32px",
+                borderRadius: "50%",
+                background: "rgba(147,0,10,0.2)",
+                border: "1px solid rgba(255,180,171,0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontSize: "0.85rem",
+                fontWeight: 700,
+                color: "var(--error)",
+              }}
+            >
+              2
+            </div>
+            <h3 style={{ fontSize: "1rem" }}>Confirm Revocation</h3>
+          </div>
 
           <div
             style={{
-              background: "rgba(239,68,68,0.06)",
-              border: "1px solid rgba(239,68,68,0.15)",
+              background: "rgba(147,0,10,0.08)",
+              border: "1px solid rgba(255,180,171,0.15)",
               borderRadius: "10px",
               padding: "1rem",
-              fontSize: "0.85rem",
-              color: "var(--text-secondary)",
+              fontSize: "0.875rem",
+              color: "var(--on-surface-variant)",
+              lineHeight: 1.6,
             }}
           >
-            <strong style={{ color: "var(--accent-kill)" }}>
+            <strong style={{ color: "var(--error)" }}>
               ⚠ This action is irreversible.
             </strong>
             <br />
@@ -243,21 +305,21 @@ export default function KillSwitchPage() {
           <div>
             <label className="label">
               Type{" "}
-              <span className="mono" style={{ color: "var(--accent-kill)" }}>
+              <span className="mono" style={{ color: "var(--error)" }}>
                 {CONFIRM_WORD}
               </span>{" "}
               to confirm
             </label>
             <input
               id="confirmRevoke"
-              className="input"
+              className="input mono"
               placeholder={CONFIRM_WORD}
               value={confirmText}
               onChange={(e) => setConfirmText(e.target.value.toUpperCase())}
               style={{
                 borderColor:
                   confirmText === CONFIRM_WORD
-                    ? "var(--accent-kill)"
+                    ? "var(--error)"
                     : undefined,
               }}
             />
@@ -266,16 +328,19 @@ export default function KillSwitchPage() {
           {error && (
             <div
               style={{
-                color: "var(--accent-kill)",
+                color: "var(--error)",
                 fontFamily: "monospace",
                 fontSize: "0.83rem",
+                padding: "0.75rem",
+                borderRadius: "8px",
+                background: "rgba(147,0,10,0.1)",
               }}
             >
               ✗ {error}
             </div>
           )}
 
-          <div style={{ display: "flex", gap: "0.75rem" }}>
+          <div style={{ display: "flex", gap: "0.75rem", flexWrap: "wrap" }}>
             <button
               id="cancelRevoke"
               className="btn btn-ghost"
@@ -293,7 +358,10 @@ export default function KillSwitchPage() {
               onClick={handleRevoke}
               style={{ fontSize: "1rem", padding: "0.75rem 2rem" }}
             >
-              {loading ? "Building Transaction…" : "🔴 REVOKE AGENT NOW"}
+              <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>
+                {loading ? "hourglass_top" : "power_settings_new"}
+              </span>
+              {loading ? "Building Transaction…" : "REVOKE AGENT NOW"}
             </button>
           </div>
         </div>
@@ -302,58 +370,49 @@ export default function KillSwitchPage() {
       {/* Step 3: Done */}
       {step === 3 && result && (
         <div
-          className="card fade-up"
-          style={{ borderColor: "rgba(239,68,68,0.4)" }}
+          className="glass-panel fade-up"
+          style={{
+            borderRadius: "16px",
+            padding: "2rem",
+            border: "1px solid rgba(255,180,171,0.3)",
+            textAlign: "center",
+          }}
         >
-          <div style={{ textAlign: "center", padding: "1.5rem 0" }}>
-            <div style={{ fontSize: "3rem", marginBottom: "1rem" }}>💀</div>
-            <h2 style={{ color: "var(--accent-kill)", marginBottom: "0.5rem" }}>
-              PolicyCap Revoked
-            </h2>
-            <p
-              style={{
-                color: "var(--text-secondary)",
-                fontSize: "0.9rem",
-                marginBottom: "1.5rem",
-              }}
-            >
-              Transaction built. Submit via Sui CLI or wallet adapter. After
-              finality the agent's next PTB will fail at the network level.
-            </p>
+          <div style={{ fontSize: "4rem", marginBottom: "1rem" }}>💀</div>
+          <h2 style={{ color: "var(--error)", marginBottom: "0.5rem" }}>
+            PolicyCap Revoked
+          </h2>
+          <p style={{ color: "var(--on-surface-variant)", fontSize: "0.9rem", marginBottom: "1.5rem", maxWidth: "360px", margin: "0 auto 1.5rem" }}>
+            Transaction built. Submit via Sui CLI or wallet adapter. After
+            finality the agent's next PTB will fail at the network level.
+          </p>
 
-            <div
-              style={{
-                background: "var(--bg-deep)",
-                borderRadius: "10px",
-                padding: "1rem",
-                fontFamily: "monospace",
-                fontSize: "0.72rem",
-                color: "var(--text-muted)",
-                textAlign: "left",
-                wordBreak: "break-all",
-                maxHeight: "120px",
-                overflow: "auto",
-                marginBottom: "1.5rem",
-              }}
-            >
-              sui client execute-signed-tx --tx-bytes{" "}
-              {result.txBytes.slice(0, 100)}…
-            </div>
+          <div
+            style={{
+              background: "rgba(0,23,17,0.6)",
+              borderRadius: "10px",
+              padding: "1rem",
+              fontFamily: "monospace",
+              fontSize: "0.7rem",
+              color: "var(--outline)",
+              textAlign: "left",
+              wordBreak: "break-all",
+              maxHeight: "120px",
+              overflow: "auto",
+              marginBottom: "1.5rem",
+            }}
+          >
+            sui client execute-signed-tx --tx-bytes{" "}
+            {result.txBytes.slice(0, 100)}…
+          </div>
 
-            <div
-              style={{
-                display: "flex",
-                gap: "0.75rem",
-                justifyContent: "center",
-              }}
-            >
-              <a href="/" className="btn btn-ghost">
-                ← Mission Control
-              </a>
-              <a href="/provision" className="btn btn-primary">
-                + New PolicyCap
-              </a>
-            </div>
+          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "center", flexWrap: "wrap" }}>
+            <a href="/" className="btn btn-ghost">
+              ← Mission Control
+            </a>
+            <a href="/provision" className="btn btn-primary">
+              + New PolicyCap
+            </a>
           </div>
         </div>
       )}

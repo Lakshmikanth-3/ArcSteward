@@ -13,6 +13,7 @@ import { Transaction } from "@mysten/sui/transactions";
 import { SuiJsonRpcClient, getJsonRpcFullnodeUrl } from "@mysten/sui/jsonRpc";
 import { Ed25519Keypair } from "@mysten/sui/keypairs/ed25519";
 import { decodeSuiPrivateKey } from "@mysten/sui/cryptography";
+import { bcs } from "@mysten/sui/bcs";
 
 const BASE_URL = "http://localhost:3000";
 const PACKAGE_ID = process.env.NEXT_PUBLIC_VELO402_PACKAGE_ID!;
@@ -86,7 +87,7 @@ async function main() {
   const pcr0Hex = process.env.EXPECTED_PCR0?.replace(/"/g, "");
   if (!pcr0Hex || pcr0Hex.length < 96) throw new Error("EXPECTED_PCR0 not set or invalid in .env");
   const pcr0Bytes = new Uint8Array(pcr0Hex.match(/.{1,2}/g)!.map((b) => parseInt(b, 16)));
-
+  
   const tx = new Transaction();
   tx.moveCall({
     target: `${PACKAGE_ID}::velo_wallet::pay_402_invoice`,
@@ -96,7 +97,7 @@ async function main() {
       tx.object(PAYMENT_REGISTRY_ID),
       tx.pure.string(challenge.request_hash),
       tx.pure.u64(BigInt(challenge.amount_mist)),
-      tx.pure(pcr0Bytes), // Nautilus attestation hash (Uint8Array)
+      tx.pure(bcs.vector(bcs.u8()).serialize(pcr0Bytes)), // Nautilus attestation hash (Uint8Array)
       tx.pure.address(keypair.toSuiAddress()), // paying to self for demo
       tx.object('0x6'), // Clock
     ],
