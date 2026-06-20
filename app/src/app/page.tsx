@@ -11,6 +11,7 @@
  */
 import { useEffect, useRef } from "react";
 import Link from "next/link";
+import ApproveWallDemo from "@/components/ApproveWallDemo";
 import "./landing.css";
 
 export default function LandingPage() {
@@ -177,7 +178,12 @@ void main() {
           </div>
         </div>
         <div className="landing-nav-right">
-          <button className="landing-btn-ghost">Connect Wallet</button>
+          <button 
+            className="landing-btn-ghost"
+            onClick={() => alert("Velo402 is an Autonomous Agent. You do not need to connect a browser wallet to sign transactions. Click 'Launch Application' to view the Mission Control dashboard.")}
+          >
+            Connect Wallet
+          </button>
           <Link href="/kill-switch" className="landing-btn-kill">Kill Switch</Link>
         </div>
       </nav>
@@ -202,7 +208,7 @@ void main() {
                 <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>rocket_launch</span>
               </Link>
               <a
-                href="https://github.com/velo402"
+                href="https://github.com/Lakshmikanth-3/velo402"
                 target="_blank"
                 rel="noreferrer"
                 className="btn-docs"
@@ -219,6 +225,12 @@ void main() {
             <ThreeOrb />
             <div className="hero-orb-fade" />
           </div>
+        </section>
+
+        {/* ── Demo Split Screen ── */}
+        <section className="demo-section scroll-reveal" style={{ maxWidth: '1000px', margin: '0 auto', padding: '4rem 2rem' }}>
+          <h2 className="section-title text-center mb-8">The Approve Wall vs. True Autonomy</h2>
+          <ApproveWallDemo />
         </section>
 
         {/* ── Sovereign Intelligence ── */}

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import SidebarLayout from "@/components/SidebarLayout";
 import ConditionalLayout from "@/components/ConditionalLayout";
+import GlobalStatsTicker from "@/components/GlobalStatsTicker";
 
 export const metadata: Metadata = {
   title: "Velo402 — Autonomous Agent Wallet",

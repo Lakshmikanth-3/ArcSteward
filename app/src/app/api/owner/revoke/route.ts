@@ -1,39 +1,50 @@
 /**
  * app/api/owner/revoke/route.ts
  *
- * Builds the kill-switch PTB (revoke_policy) for the human's wallet.
- * Returns unsigned serialized bytes — the wallet signs client-side.
+ * Permanently burns the agent's PolicyCap — the kill switch.
+ * Signs and executes the revoke_policy PTB using the backend agent key.
  */
 import { NextRequest, NextResponse } from "next/server";
 import { buildRevokePolicyTx } from "@/lib/ptb-builders";
 import { suiClient } from "@/lib/sui-client";
+import { getAgentKeypair } from "@/lib/agent-keypair";
 
 export async function POST(req: NextRequest) {
   try {
     const body = (await req.json()) as {
-      ownerCapId: string;
       policyCapId: string;
     };
 
-    const { ownerCapId, policyCapId } = body;
+    const { policyCapId } = body;
 
-    if (!ownerCapId || !policyCapId) {
+    if (!policyCapId) {
       return NextResponse.json(
-        { error: "ownerCapId and policyCapId are required." },
+        { error: "policyCapId is required." },
         { status: 400 },
       );
     }
 
+    const ownerCapId = process.env.OWNER_CAP_ID;
+    if (!ownerCapId) {
+      return NextResponse.json(
+        { error: "OWNER_CAP_ID is not set in .env" },
+        { status: 500 },
+      );
+    }
+
     const tx = buildRevokePolicyTx({ ownerCapId, policyCapId });
-    const txBytes = await tx.build({ client: suiClient });
-    const txBase64 = Buffer.from(txBytes).toString("base64");
+    const kp = getAgentKeypair();
+    const result = await suiClient.signAndExecuteTransaction({
+      transaction: tx,
+      signer: kp,
+    });
 
     return NextResponse.json({
       ok: true,
-      txBytes: txBase64,
+      digest: result.digest,
+      revokedPolicyCapId: policyCapId,
       warning:
-        "This transaction permanently deletes the PolicyCap. The agent will be " +
-        "unable to execute any further transactions after finality.",
+        "PolicyCap permanently deleted. The agent can no longer execute any transactions.",
     });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);

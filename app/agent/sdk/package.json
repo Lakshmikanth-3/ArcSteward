@@ -1,0 +1,28 @@
+{
+  "name": "@velo402/sdk",
+  "version": "0.1.0",
+  "description": "Velo402 Autonomous Agent SDK - Connect agents to on-chain capabilities seamlessly",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "dependencies": {
+    "@mysten/sui": "^1.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.0.0"
+  },
+  "keywords": [
+    "sui",
+    "agent",
+    "autonomous",
+    "crypto",
+    "402",
+    "velo"
+  ],
+  "author": "Velo402 Team",
+  "license": "MIT"
+}

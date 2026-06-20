@@ -226,7 +226,7 @@ export default function TradingPage() {
                   {ACTION_LABEL[t.action] ?? t.action} ·{" "}
                   {mistToSui(t.amountMist)} SUI{" "}
                   <a
-                    href={`https://suiexplorer.com/txblock/${t.txDigest}?network=testnet`}
+                    href={`https://testnet.suivision.xyz/txblock/${t.txDigest}`}
                     target="_blank"
                     rel="noreferrer"
                     style={{ color: "var(--outline)", fontSize: "0.7rem" }}

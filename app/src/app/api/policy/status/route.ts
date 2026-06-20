@@ -3,13 +3,14 @@
  * Returns the live PolicyCap + Treasury state for the dashboard.
  */
 import { NextResponse } from "next/server";
-import { fetchPolicyCap, fetchTreasury } from "@/lib/policy-reader";
+import { fetchPolicyCap, fetchSwarmPolicyCaps, fetchTreasury } from "@/lib/policy-reader";
 import { suiClient } from "@/lib/sui-client";
 
 export async function GET() {
   try {
-    const [policy, treasury, epoch] = await Promise.all([
+    const [policy, swarm, treasury, epoch] = await Promise.all([
       fetchPolicyCap(),
+      fetchSwarmPolicyCaps(),
       fetchTreasury(),
       suiClient.getLatestSuiSystemState().then((s) => Number(s.epoch)),
     ]);
@@ -24,6 +25,12 @@ export async function GET() {
         currentSpend: policy.currentSpend.toString(),
         remainingBudget: policy.remainingBudget.toString(),
       },
+      policies: swarm.map(p => ({
+        ...p,
+        maxSpend: p.maxSpend.toString(),
+        currentSpend: p.currentSpend.toString(),
+        remainingBudget: p.remainingBudget.toString(),
+      })),
       treasury: {
         ...treasury,
         balanceMist: treasury.balanceMist.toString(),

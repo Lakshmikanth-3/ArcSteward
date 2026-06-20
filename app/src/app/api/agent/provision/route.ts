@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { buildMintPolicyTx } from "@/lib/ptb-builders";
 import { suiClient } from "@/lib/sui-client";
+import { getAgentKeypair } from "@/lib/agent-keypair";
 
 export async function POST(req: NextRequest) {
   try {
@@ -37,22 +38,34 @@ export async function POST(req: NextRequest) {
 
     const maxSpendMist = BigInt(Math.round(maxSpendSui * 1e9));
 
+    const expectedPcr0 = process.env.EXPECTED_PCR0;
+    if (!expectedPcr0) {
+      return NextResponse.json(
+        { error: "EXPECTED_PCR0 is not set in .env" },
+        { status: 500 },
+      );
+    }
+
     const tx = buildMintPolicyTx({
       ownerCapId,
       maxSpendMist,
       expirationEpoch,
       allowedScopes,
       attestedComputeRequired,
+      expectedPcr0,
       agentAddress,
     });
 
-    // Serialize the transaction bytes for the wallet to sign
-    const txBytes = await tx.build({ client: suiClient });
-    const txBase64 = Buffer.from(txBytes).toString("base64");
+    // Sign and execute the transaction directly using the backend key
+    const kp = getAgentKeypair();
+    const result = await suiClient.signAndExecuteTransaction({
+      transaction: tx,
+      signer: kp,
+    });
 
     return NextResponse.json({
       ok: true,
-      txBytes: txBase64,
+      digest: result.digest,
       summary: {
         maxSpendSui,
         maxSpendMist: maxSpendMist.toString(),

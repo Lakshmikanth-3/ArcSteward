@@ -72,11 +72,14 @@ export default function ProvisionPage() {
   const [agentAddr, setAgentAddr] = useState("");
   const [currentEpoch, setCurrentEpoch] = useState(0);
   const [result, setResult] = useState<{
-    txBytes: string;
+    digest: string;
     summary: object;
   } | null>(null);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const [agentName, setAgentName] = useState("");
+  const [nameError, setNameError] = useState("");
 
   // ── Intent parser state ──────────────────────────────────────────────────
   const [intentText, setIntentText] = useState("");
@@ -125,7 +128,22 @@ export default function ProvisionPage() {
 
   const handleBuild = async () => {
     setError("");
+    setNameError("");
     setResult(null);
+
+    // Validate agent name
+    if (!agentName.trim()) {
+      setNameError("Agent name is required.");
+      return;
+    }
+    // Check uniqueness against stored names
+    const stored: Record<string, string> = JSON.parse(localStorage.getItem("velo402_agent_names") ?? "{}");
+    const existingNames = Object.values(stored).map((n) => n.toLowerCase());
+    if (existingNames.includes(agentName.trim().toLowerCase())) {
+      setNameError(`An agent named "${agentName.trim()}" already exists. Choose a unique name.`);
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch("/api/agent/provision", {
@@ -142,6 +160,10 @@ export default function ProvisionPage() {
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Unknown error");
+      // Save agent name keyed by policyCapId (or digest as fallback)
+      const nameKey = data.policyCapId ?? data.digest;
+      const updated = { ...stored, [nameKey]: agentName.trim() };
+      localStorage.setItem("velo402_agent_names", JSON.stringify(updated));
       setResult(data);
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : String(e));
@@ -262,6 +284,28 @@ export default function ProvisionPage() {
           className="glass-panel edge-light fade-up-2"
           style={{ borderRadius: "16px", padding: "2rem", display: "flex", flexDirection: "column", gap: "1.75rem" }}
         >
+          {/* Agent Name */}
+          <div>
+            <label className="label">Agent Name</label>
+            <input
+              id="agentName"
+              className="input"
+              placeholder="e.g. Data Scout Alpha, Spot Trader Zeta…"
+              value={agentName}
+              onChange={(e) => { setAgentName(e.target.value); setNameError(""); }}
+              style={nameError ? { borderColor: "var(--error)" } : {}}
+            />
+            {nameError ? (
+              <p style={{ fontSize: "0.73rem", color: "var(--error)", marginTop: "0.4rem" }}>
+                ✗ {nameError}
+              </p>
+            ) : (
+              <p style={{ fontSize: "0.73rem", color: "var(--outline)", marginTop: "0.4rem" }}>
+                A unique human-readable name for this agent. Must not match any existing agent.
+              </p>
+            )}
+          </div>
+
           {/* Owner Cap ID */}
           <div>
             <label className="label">OwnerCap Object ID</label>
@@ -521,28 +565,19 @@ export default function ProvisionPage() {
             >
               <div style={{ color: "var(--primary)", fontWeight: 700, marginBottom: "0.5rem", display: "flex", alignItems: "center", gap: "0.4rem" }}>
                 <span className="material-symbols-outlined" style={{ fontSize: "18px" }}>check_circle</span>
-                PTB Built Successfully
+                Policy Minted Successfully
               </div>
               <p style={{ fontSize: "0.8rem", color: "var(--on-surface-variant)", marginBottom: "0.75rem" }}>
-                Submit these bytes via Sui CLI or your wallet adapter:
+                The agent has been successfully provisioned on the blockchain.
               </p>
-              <pre
-                style={{
-                  fontSize: "0.7rem",
-                  fontFamily: "monospace",
-                  color: "var(--on-surface-variant)",
-                  wordBreak: "break-all",
-                  whiteSpace: "pre-wrap",
-                  maxHeight: "140px",
-                  overflow: "auto",
-                  background: "rgba(0,23,17,0.5)",
-                  padding: "0.75rem",
-                  borderRadius: "8px",
-                }}
+              <a
+                href={`https://testnet.suivision.xyz/txblock/${result.digest}`}
+                target="_blank"
+                rel="noreferrer"
+                style={{ fontSize: "0.8rem", color: "var(--primary)", textDecoration: "underline", wordBreak: "break-all" }}
               >
-                sui client execute-signed-tx --tx-bytes{" "}
-                {result.txBytes.slice(0, 80)}…
-              </pre>
+                View Transaction on SuiVision: {result.digest}
+              </a>
             </div>
           )}
         </div>

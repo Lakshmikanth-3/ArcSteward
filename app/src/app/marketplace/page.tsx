@@ -48,20 +48,70 @@ export default function MarketplacePage() {
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [testing, setTesting] = useState(false);
 
+  // ── Load historical purchases on mount + live stream new ones ──────────
   useEffect(() => {
+    // Helper: convert action_type from either raw string or byte array
+    function decodeActionType(raw: unknown): string {
+      if (typeof raw === "string") return raw;
+      if (Array.isArray(raw)) {
+        try { return String.fromCharCode(...(raw as number[])); } catch { return ""; }
+      }
+      return String(raw ?? "");
+    }
+
+    function isDataPurchase(pj: any): boolean {
+      const at = decodeActionType(pj?.action_type);
+      return at.includes("402") || at.includes("DATA") || at.toLowerCase().includes("data");
+    }
+
+    // 1. Fetch historical events from the blockchain on mount
+    const PACKAGE_ID = process.env.NEXT_PUBLIC_VELO402_PACKAGE_ID;
+    if (PACKAGE_ID) {
+      fetch(`/api/audit/stream`, { method: "HEAD" }); // warm up
+      fetch("/api/policy/status")
+        .then(r => r.json())
+        .then(() => {
+          // Pull historical AgentActionEvents directly
+          return fetch(`/api/audit/stream`);
+        })
+        .catch(() => {});
+
+      // Direct RPC fetch for historical purchases
+      fetch("/api/stats/global")
+        .then((r) => r.json())
+        .then((stats) => {
+          // stats.recentEvents should have the data — load into state
+          if (Array.isArray(stats.recentEvents)) {
+            const historical: Purchase[] = stats.recentEvents
+              .filter((e: any) => e.eventType?.includes("AgentActionEvent") && isDataPurchase(e.parsedJson))
+              .map((e: any) => ({
+                id: e.txDigest,
+                txDigest: e.txDigest,
+                amountMist: BigInt(e.parsedJson?.amount ?? 50000000),
+                ts: Number(e.timestampMs ?? Date.now()),
+              }));
+            if (historical.length > 0) {
+              setPurchases(historical.slice(0, 50));
+            }
+          }
+        })
+        .catch(() => {});
+    }
+
+    // 2. Live stream new purchases via SSE
     const es = new EventSource("/api/audit/stream");
     es.onmessage = (e) => {
       const data = JSON.parse(e.data);
       if (data.type === "event" && data.eventType?.includes("AgentActionEvent")) {
         const pj = data.parsedJson as any;
-        if (pj?.action_type === "402_DATA_PURCHASE") {
+        if (isDataPurchase(pj)) {
           setPurchases((prev) => {
             if (prev.find((p) => p.txDigest === data.txDigest)) return prev;
             return [
               {
                 id: data.txDigest,
                 txDigest: data.txDigest,
-                amountMist: BigInt(pj.amount ?? 0),
+                amountMist: BigInt(pj.amount ?? 50000000),
                 ts: Number(data.timestampMs ?? Date.now()),
               },
               ...prev,
@@ -257,7 +307,7 @@ export default function MarketplacePage() {
                       </div>
                     </div>
                     <a
-                      href={`https://suiexplorer.com/txblock/${p.txDigest}?network=testnet`}
+                      href={`https://testnet.suivision.xyz/txblock/${p.txDigest}`}
                       target="_blank"
                       rel="noreferrer"
                       className="btn btn-ghost"

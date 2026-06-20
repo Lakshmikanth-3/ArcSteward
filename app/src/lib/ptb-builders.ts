@@ -21,6 +21,7 @@ export function buildMintPolicyTx({
   expirationEpoch,
   allowedScopes,
   attestedComputeRequired,
+  expectedPcr0,
   agentAddress,
 }: {
   ownerCapId: string;
@@ -28,9 +29,12 @@ export function buildMintPolicyTx({
   expirationEpoch: number;
   allowedScopes: number[];
   attestedComputeRequired: boolean;
+  expectedPcr0: string; // hex string from EXPECTED_PCR0 env var
   agentAddress: string;
 }): Transaction {
   const tx = new Transaction();
+
+  const pcr0Bytes = Array.from(Buffer.from(expectedPcr0, "hex"));
 
   tx.moveCall({
     target: `${PACKAGE_ID}::velo_wallet::mint_policy`,
@@ -41,6 +45,7 @@ export function buildMintPolicyTx({
       tx.pure.u64(expirationEpoch),
       tx.pure(bcs_encode_u8_vec(allowedScopes)),
       tx.pure.bool(attestedComputeRequired),
+      tx.pure(bcs_encode_u8_vec(pcr0Bytes)),
       tx.pure.address(agentAddress),
     ],
   });
