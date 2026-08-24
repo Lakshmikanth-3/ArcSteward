@@ -12,7 +12,8 @@
     "start:agent": "tsx --env-file=.env agent/agent-runner.ts",
     "test": "tsx --test \"src/lib/rooster/__tests__/**/*.test.ts\"",
     "rooster:e2e": "tsx --env-file=.env scripts/rooster-e2e-test.ts",
-    "rooster:refund-test": "tsx --env-file=.env scripts/rooster-refund-test.ts"
+    "rooster:refund-test": "tsx --env-file=.env scripts/rooster-refund-test.ts",
+    "rooster:balance": "tsx --env-file=.env scripts/check-settlement-balance.ts"
   },
   "dependencies": {
     "@mysten/deepbook-v3": "1.5.0",

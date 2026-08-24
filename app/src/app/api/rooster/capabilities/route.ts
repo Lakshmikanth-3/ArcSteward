@@ -4,16 +4,34 @@
  * POST — Operator-only. Issues a RoosterCapability for an agent, the
  * off-chain stand-in for velo_wallet::mint_policy on this rail. NOT
  * agent-facing/self-service: no agent-side code anywhere in this repo calls
- * this route. In a real deployment this must sit behind operator
- * authentication (session/admin-key middleware) before handling any
- * non-local traffic.
+ * this route. Guarded by a shared-secret header (ROOSTER_OPERATOR_KEY) and a
+ * hard per-capability ceiling (ROOSTER_MAX_CAPABILITY_CENTS) — both fail
+ * closed if unset.
  */
+import { timingSafeEqual } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 import { issueCapability } from "@/lib/rooster/capability-store";
+import { getMaxCapabilityCents, getRoosterOperatorKey } from "@/lib/rooster/config";
 import { CapabilityDeniedError, type Currency } from "@/lib/rooster/types";
+
+function isAuthorized(req: NextRequest): boolean {
+  const provided = req.headers.get("x-operator-key");
+  if (!provided) return false;
+  const expected = getRoosterOperatorKey();
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  return a.length === b.length && timingSafeEqual(a, b);
+}
 
 export async function POST(req: NextRequest) {
   try {
+    if (!isAuthorized(req)) {
+      return NextResponse.json(
+        { ok: false, error: "Missing or invalid x-operator-key header." },
+        { status: 401 },
+      );
+    }
+
     const body = (await req.json()) as {
       agentId?: string;
       currency?: Currency;
@@ -29,6 +47,16 @@ export async function POST(req: NextRequest) {
     if (!body.maxAmountCents || body.maxAmountCents <= 0) {
       return NextResponse.json(
         { ok: false, error: "maxAmountCents must be positive." },
+        { status: 400 },
+      );
+    }
+    const ceiling = getMaxCapabilityCents();
+    if (body.maxAmountCents > ceiling) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: `maxAmountCents ${body.maxAmountCents} exceeds the configured ceiling ${ceiling}c (ROOSTER_MAX_CAPABILITY_CENTS).`,
+        },
         { status: 400 },
       );
     }

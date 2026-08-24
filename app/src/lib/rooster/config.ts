@@ -51,6 +51,42 @@ export function isMainnetAllowed(): boolean {
   return (process.env.ROOSTER_ALLOW_MAINNET ?? "false").toLowerCase() === "true";
 }
 
+/**
+ * Shared secret required on every call to the operator-only
+ * POST /api/rooster/capabilities route. Fails closed: unset means the route
+ * refuses all requests rather than defaulting to open.
+ */
+export function getRoosterOperatorKey(): string {
+  const key = process.env.ROOSTER_OPERATOR_KEY;
+  if (!key) {
+    throw new Error(
+      "ROOSTER_OPERATOR_KEY env var is not set. Required to issue capabilities " +
+        "via POST /api/rooster/capabilities. Add it to app/.env (see .env.example).",
+    );
+  }
+  return key;
+}
+
+/**
+ * Hard ceiling (defense in depth beyond the settlement wallet's actual
+ * balance) on the maxAmountCents any single capability can grant. Fails
+ * closed: unset means the route refuses all requests.
+ */
+export function getMaxCapabilityCents(): number {
+  const raw = process.env.ROOSTER_MAX_CAPABILITY_CENTS;
+  if (!raw) {
+    throw new Error(
+      "ROOSTER_MAX_CAPABILITY_CENTS env var is not set. Required to issue capabilities " +
+        "via POST /api/rooster/capabilities. Add it to app/.env (see .env.example).",
+    );
+  }
+  const cents = Number(raw);
+  if (!Number.isInteger(cents) || cents <= 0) {
+    throw new Error(`ROOSTER_MAX_CAPABILITY_CENTS must be a positive integer, got "${raw}".`);
+  }
+  return cents;
+}
+
 export interface BaseChainConfig {
   rpcUrl: string;
   usdcContract: `0x${string}`;
