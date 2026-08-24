@@ -30,6 +30,10 @@ yarn-error.log*
 
 # env files
 .env*
+!.env.example
+
+# Rooster integration — local off-chain capability/reconciliation ledger
+.data/
 
 # vercel
 .vercel

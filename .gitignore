@@ -3,9 +3,13 @@
 node_modules/
 app/.env*
 app/node_modules/
+!app/.env.example
 
 move/**/build/
 move/**/.aptos/
 
 walrus.exe
+
+# Rooster integration — local off-chain capability/reconciliation ledger
+app/.data/
 

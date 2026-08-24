@@ -9,7 +9,10 @@
     "lint": "eslint",
     "agent:run": "tsx agent/agent-runner.ts",
     "encrypt:dataset": "tsx scripts/encrypt-and-publish-dataset.ts",
-    "start:agent": "tsx --env-file=.env agent/agent-runner.ts"
+    "start:agent": "tsx --env-file=.env agent/agent-runner.ts",
+    "test": "tsx --test \"src/lib/rooster/__tests__/**/*.test.ts\"",
+    "rooster:e2e": "tsx --env-file=.env scripts/rooster-e2e-test.ts",
+    "rooster:refund-test": "tsx --env-file=.env scripts/rooster-refund-test.ts"
   },
   "dependencies": {
     "@mysten/deepbook-v3": "1.5.0",
@@ -20,7 +23,8 @@
     "lucide-react": "^1.20.0",
     "next": "16.2.9",
     "react": "19.2.4",
-    "react-dom": "19.2.4"
+    "react-dom": "19.2.4",
+    "viem": "^2.21.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
