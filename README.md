@@ -59,6 +59,12 @@ graph TD
         K[Nautilus TEE]
     end
 
+    subgraph "Rooster Settlement Rail (Base Sepolia, independent)"
+        L((RoosterCapability))
+        M[SettlementAdapter]
+        N[(Rooster Per-Offer Escrow)]
+    end
+
     A -->|Provisions & Monitors| D
     B -->|Full Control| E
     C -->|Uses| D
@@ -74,6 +80,10 @@ graph TD
     J -.->|Releases Key| C
     
     C -.->|Hardware Attestation| K
+
+    C -.->|"Independent rail, zero Sui RPC"| L
+    L --> M
+    M -->|Real signed USDC transfer| N
 ```
 
 ---
@@ -155,43 +165,49 @@ npm run start:agent
 
 ## 🐓 Rooster Agents Integration
 
-**Velo402 authorization is separate from blockchain settlement.** This section documents an additional, independent funding rail built alongside the Sui-native wallet above — it does not replace, weaken, or depend on the Sui contracts described earlier in this README.
+**Velo402 authorization is separate from blockchain settlement.** This section documents an additional, independent funding rail built alongside the Sui-native wallet above — it does not replace, weaken, or depend on the Sui contracts described earlier in this README. Nothing in this rail touches `velo_wallet`, `Treasury`, `PolicyCap`, or `AGENT_PRIVATE_KEY`.
 
-### 1. What is Rooster?
+### 1. What is Rooster, and where this stands
 
-[Rooster Agents](https://roosteragents.ai/agent-economy/) runs a marketplace where AI agents hire real human creators to post sponsored content (Instagram, TikTok, YouTube, X, etc.). An agent submits an offer, the human accepts/rejects/counters, an accepted offer is funded into escrow, the creator posts, the post is verified, and the escrowed funds release — settling in **USDC on Base**.
+[Rooster Agents](https://roosteragents.ai/agent-economy/) runs a marketplace where AI agents hire real human creators to post sponsored content (Instagram, TikTok, YouTube, X, etc.). An agent submits an offer, a human personally accepts/rejects/counters it (no auto-approval, ever), an accepted offer is funded into a per-offer escrow, the creator posts, the post is verified live, and escrow releases — settling in **USDC on Base**.
+
+Velo402 is registered as **Founding Agent #2** on Rooster's marketplace — this is a live partnership in progress, not a hypothetical integration target. See [§4 Partnership terms](#4-partnership-terms) for the commercial structure both sides agreed to.
 
 ### 2. Why Velo402 integrates with it
 
-Rooster wants Velo402 to be a supported funding rail so agents that already hold Velo402 authorization can pay creators without a human re-approving every individual post. This is prep work for a 90-day Base Sepolia pilot — a commercial arrangement, not a change to Velo402's core Sui wallet.
+Rooster wants Velo402 to become a supported funding rail so agents that already hold Velo402 authorization can pay human creators without a human re-approving every individual post. This is prep work for a 90-day Base Sepolia pilot — a commercial arrangement, not a change to Velo402's core Sui wallet.
 
 ### 3. Architecture
 
-```
-AI Agent
-  │
-  ▼
-RoosterCapability   (Velo402-style authorization: budget ceiling, destination/
-  │                  currency allow-list, offer-specific, one-time, expiring —
-  │                  operator-issued, agent-consumed, entirely off-chain)
-  ▼
-RoosterClient       (real REST calls to roosteragents.ai, testMode-first)
-  │
-  ▼
-ReconciliationStore (idempotency + state ledger: offerId ⇄ authorization ⇄ txHash)
-  │
-  ▼
-SettlementAdapter (BaseSepoliaSettlementAdapter)
-  │  fund()               → REAL signed USDC transfer on Base Sepolia (viem)
-  │  waitForConfirmation()→ REAL on-chain receipt polling
-  │  bridgeFromSui()      → NOT IMPLEMENTED, throws explicitly — see Security below
-  ▼
-Rooster per-offer escrow (Base Sepolia)
+```mermaid
+flowchart TD
+    A[AI Agent] --> B((RoosterCapability))
+    B -->|"budget ceiling, currency/destination allow-list,<br/>offer-specific, one-time, expiring —<br/>operator-issued, off-chain"| C[RoosterClient]
+    C -->|"real REST calls to roosteragents.ai,<br/>sandbox and testMode aware"| D[(Reconciliation Ledger)]
+    D --> E[SettlementAdapter]
+    E -->|"fund(): real signed USDC transfer, viem"| F([Base Sepolia])
+    E -.->|"bridgeFromSui(): NOT IMPLEMENTED,<br/>throws explicitly — see Security"| G[/Sui Treasury/]
+    F --> H[(Rooster Per-Offer Escrow)]
+    H -->|released| I((Creator Wallet))
+    H -.->|"refunded, if post fails"| J((Settlement Wallet))
 ```
 
-This rail runs entirely independently of the Sui-native `Treasury`/`PolicyCap`/`OwnerCap` model documented above — it makes **zero Sui RPC calls**. `RoosterCapability` mirrors the same trust shape (operator issues a budget-scoped, revocable, expiring capability; the agent can only spend within it) but as a self-contained off-chain record for this specific settlement rail, implemented under `app/src/lib/rooster/`.
+This rail makes **zero Sui RPC calls**. `RoosterCapability` mirrors Velo402's on-chain trust shape (operator issues a budget-scoped, revocable, expiring capability; the agent can only spend within it) as a self-contained off-chain record, implemented under `app/src/lib/rooster/`.
 
-### 4. Environment variables
+### 4. Partnership terms
+
+Agreed with Rooster (Aug 2026):
+
+- **No integration fee**, either direction.
+- **Non-exclusive**, 90-day pilot.
+- **Referral revenue**: Rooster pays Velo402 20% of the marketplace fee collected on any agent that registers Velo402 as its funding rail, for 12 months from that agent's first funded offer — plus 20% of that operator's Agent Pro subscription revenue while subscribed. Paid monthly in USDC, net-30.
+- **Preferred-rail placement**: free listing in Rooster's public docs, MCP discovery document, and onboarding flow.
+- **Milestones before Velo402 is listed as a supported funding rail:**
+  1. ✅ Testnet loop proven end-to-end (§7 below — both legs, live, Base Sepolia).
+  2. ⬜ One real mainnet offer ($25 minimum) funded through Velo402's path.
+  3. ⬜ Documentation Rooster's users can follow without either team on a call (this section is that documentation).
+
+### 5. Environment variables
 
 See `app/.env.example` for the full, safe-to-commit list. Key ones:
 
@@ -199,57 +215,114 @@ See `app/.env.example` for the full, safe-to-commit list. Key ones:
 |---|---|
 | `ROOSTER_AGENT_KEY` | Bearer key for the Rooster API. Never hardcoded, never logged. |
 | `ROOSTER_BASE_URL` | Rooster REST base URL. |
-| `ROOSTER_TEST_MODE` | Default `testMode` for offers. |
+| `ROOSTER_TEST_MODE` | Default `testMode` for offers submitted without an explicit flag. |
 | `SETTLEMENT_NETWORK` | `development` \| `base-sepolia` \| `base`. |
 | `BASE_SEPOLIA_RPC_URL` | Base Sepolia RPC endpoint. |
 | `EVM_SETTLEMENT_PRIVATE_KEY` | **Dedicated** EVM key for settlement — never the Sui `AGENT_PRIVATE_KEY`. |
 | `USDC_BASE_SEPOLIA_CONTRACT` | Defaults to Circle's official Base Sepolia USDC. |
 | `ROOSTER_ALLOW_MAINNET` | Must be `true`, **in addition to** `SETTLEMENT_NETWORK=base`, before any real fund can move. |
+| `ROOSTER_OPERATOR_KEY` | Shared secret required on `POST /api/rooster/capabilities` (`x-operator-key` header). Fails closed if unset. |
+| `ROOSTER_MAX_CAPABILITY_CENTS` | Hard server-side ceiling on any capability's `maxAmountCents`, enforced regardless of what the caller requests. Fails closed if unset. |
 
-### 5. Test-mode setup
+### 6. Two ways to test, and what each actually proves
+
+**`testMode: true`** — screened and priced end-to-end by Rooster, but a human never accepts a simulation, so it can never reach `awaiting_funding`. Good for exercising the client, retries, and status-polling shapes before touching any chain — cannot prove the funding/release/refund path, since nothing downstream of acceptance is reachable.
+
+**`sandbox: true`** (Rooster server v1.3.0+) — auto-accepted instantly by a labelled, explicitly-non-human Rooster sandbox creator. Reaches a genuine per-offer Base Sepolia escrow wallet, a real signed USDC transfer, and a real on-chain release or refund. `sandbox` and `testMode` are mutually exclusive; `agentWallet` is required (it's the refund destination); `creatorCode`/`agentName` are ignored by Rooster for sandbox offers. This is what actually proved the integration in §7 below.
 
 ```bash
 cd app
 npm install
-# copy .env.example to .env and fill in ROOSTER_AGENT_KEY at minimum
-npm test                 # offline unit tests — no network/chain calls
-npm run rooster:e2e      # live: submits a real testMode offer to Rooster
+# copy .env.example to .env — fill in ROOSTER_AGENT_KEY, EVM_SETTLEMENT_PRIVATE_KEY,
+# ROOSTER_OPERATOR_KEY, ROOSTER_MAX_CAPABILITY_CENTS
+npm test                      # offline unit tests — no network/chain calls
+npm run rooster:balance       # check the Base Sepolia settlement wallet's ETH/USDC
+npm run rooster:e2e           # live: submits a real sandbox offer, funds it, waits for release
+npm run rooster:refund-test   # live: submits a sandbox offer with sandboxOutcome: "refund"
 ```
 
-`testMode: true` offers are screened and priced end-to-end by Rooster but **never post for real and never move money** — safe to run repeatedly.
+### 7. Live proof — Base Sepolia, both legs, on-chain
 
-### 6. Offer submission
+Settlement wallet: `0x5ae3f29d877378aCAAE5c0Bc5a5B379d257d9c60`
 
-`RoosterClient.submitOffer()` accepts a friendly `{ deliverable: { platform, kind, caption } }` shape and flattens it to Rooster's real (flat) wire schema internally. `offer-validation.ts` enforces: `creatorCode` required for `audience: "targeted"`; valid `platform`/`kind` enums; caption present and containing `#ad`; `mediaUrl` required for Instagram; links only in `linkUrl`, never the caption body; `currency` must be `USDC`; price ≥ $5 always, ≥ $25 for non-test offers (Rooster's documented real minimum), ≤ $50,000.
+```mermaid
+sequenceDiagram
+    participant Agent as Velo402 Agent
+    participant Rooster as Rooster API
+    participant Chain as Base Sepolia
 
-### 7. Offer status polling
+    Agent->>Rooster: submitOffer(sandbox: true, agentWallet)
+    Rooster-->>Agent: offerId
+    Note over Rooster: Auto-accepted by sandbox creator, not human
+    Agent->>Rooster: poll offer-status
+    Rooster-->>Agent: awaiting_funding + funding.deposit_address + amount_usdc
+    Agent->>Chain: fund() -- real signed USDC transfer()
+    Chain-->>Agent: tx confirmed
+    Note over Rooster: Funding watcher detects on-chain deposit (~1.5-2.5min)
+    alt sandboxOutcome omitted -- delivery
+        Rooster->>Chain: release escrow to creator
+        Rooster-->>Agent: escrowStatus: released, releaseTx
+    else sandboxOutcome: "refund"
+        Rooster->>Chain: refund escrow to agentWallet
+        Rooster-->>Agent: escrowStatus: refunded, refundTx
+    end
+```
 
-Rooster has no webhooks for this integration. `lib/rooster/offer-status-poller.ts`'s `waitForOfferStatus(offerId, { timeout, interval })` polls with bounded backoff, stops on any terminal state (`released`, `refunded`, `rejected`, `expired_unfunded`) or on timeout, and always preserves the last known state rather than throwing.
+| Leg | Funded | Result | On-chain tx |
+|---|---|---|---|
+| Delivery | 5.75 USDC | 5.00 USDC released to creator, 0.75 USDC fee retained | [`0xcdc7f6e3...`](https://base-sepolia.blockscout.com/tx/0xcdc7f6e3472114321423388eae414b8b92a97055e20428a0c5fe3eaa4df4d31a) |
+| Refund | 5.75 USDC | Full 5.75 USDC returned, no fee taken | [`0x5dc553b4...`](https://base-sepolia.blockscout.com/tx/0x5dc553b42cc46173e5569f610b0d6ec0154441f73d2c9784db5d19d1653bc4f9) |
 
-### 8. Capability authorization
+Three real bugs surfaced only by running this live traffic (not catchable by reading code or offline tests alone) and fixed in `lib/rooster/rooster-client.ts`:
+- `funding.deposit_address` is Rooster's actual field name (snake_case) — the client only checked `depositAddress`/`address`.
+- `funding.amount_usdc` is a decimal USD string (e.g. `"5.75"`) — the client only checked integer-cents fields, so the funding amount was silently always `0`.
+- Once an offer posts, Rooster's top-level `status` field freezes at `"posted"` forever. The real released/refunded transition only appears in `escrowStatus` — the poller now reads that field first.
 
-Every funding attempt goes through `authorizeRoosterSpend()` (`lib/rooster/capability.ts`), which checks, in order: destination allow-listed → currency allow-listed → capability exists and isn't revoked → currency matches the capability's own scope → offer-id matches (if the capability is offer-specific) → not expired → within the spend ceiling (checked against the **real funding amount**, i.e. price + Rooster's 15% marketplace fee, not the raw offer price) → not already funded (one-time enforcement via the reconciliation ledger). A capability is issued by the operator via `POST /api/rooster/capabilities` — no agent code calls this route itself.
+### 8. Offer submission
 
-### 9. Base Sepolia testing
+`RoosterClient.submitOffer()` accepts a friendly `{ deliverable: { platform, kind, caption } }` shape and flattens it to Rooster's real (flat) wire schema internally. `offer-validation.ts` enforces: `creatorCode` required for `audience: "targeted"` (skipped entirely for `sandbox` offers); valid `platform`/`kind` enums; caption present and containing `#ad`; `mediaUrl` required for Instagram; links only in `linkUrl`, never the caption body; `currency` must be `USDC`; price ≥ $5 for test-mode/sandbox, ≥ $25 for real offers (Rooster's documented minimum), ≤ $50,000. Sandbox offers additionally require `agentWallet` and `sandboxChain`, and reject `testMode: true` (mutually exclusive).
 
-`POST /api/rooster/offers/[offerId]/fund` is the single, capability-gated, idempotent entry point that actually moves funds: it re-fetches live offer status from Rooster (never trusts a client-supplied deposit address/amount), runs the capability check, and — only for a genuinely new idempotency key — calls `BaseSepoliaSettlementAdapter.fund()`, which submits a real signed USDC `transfer()` on Base Sepolia and waits for a real on-chain receipt before marking the reconciliation record `CONFIRMED`. Run `npm run rooster:e2e` for the full flow.
+### 9. Offer status polling
 
-### 10. Refund handling
+Rooster has no webhooks for this integration. `lib/rooster/offer-status-poller.ts`'s `waitForOfferStatus(offerId, { timeout, interval })` polls with bounded backoff, stops on any terminal state (`released`, `refunded`, `rejected`, `expired_unfunded`) or on timeout, and always preserves the last known state rather than throwing. Live-observed funding-watcher + release/refund latency is ~1.5–2.5 minutes after the on-chain transfer confirms — the e2e/refund-test scripts budget 210 seconds for this final poll accordingly.
 
-`npm run rooster:refund-test` polls for the `refunded` terminal state and reconciles it. Note: forcing a real refund requires a real, human-accepted, funded offer whose post Rooster later judges unverifiable — impossible to trigger in `testMode`, which the script documents rather than fakes.
+### 10. Capability authorization
 
-### 11. Security
+Every funding attempt goes through `authorizeRoosterSpend()` (`lib/rooster/capability.ts`), which checks, in order: destination allow-listed → currency allow-listed → capability exists and isn't revoked → currency matches the capability's own scope → offer-id matches (if the capability is offer-specific) → not expired → within the spend ceiling (checked against the **real funding amount**, i.e. price + Rooster's 15% marketplace fee, not the raw offer price) → not already funded (one-time enforcement via the reconciliation ledger).
 
-- `ROOSTER_AGENT_KEY` and `EVM_SETTLEMENT_PRIVATE_KEY` are environment-only, never hardcoded, never logged (`lib/rooster/logger.ts` actively redacts known secret shapes even if one is accidentally passed in).
-- `RoosterClient` enforces HTTPS, times out every call, retries only transient (429/5xx) failures with backoff, and throttles outgoing requests. Rooster does enforce a real per-key rate limit in practice (observed live via `rate_limit_remaining_this_hour` in the submit-offer response, starting around 120/hour) even though it isn't called out in their published docs — the client's conservative default throttle and bounded retries are a real safeguard, not a defensive-only measure.
+A capability is issued by the operator via `POST /api/rooster/capabilities` — no agent code calls this route itself. The route is gated behind a shared-secret `x-operator-key` header (`ROOSTER_OPERATOR_KEY`, timing-safe compare) and a hard server-side ceiling (`ROOSTER_MAX_CAPABILITY_CENTS`) enforced regardless of what the caller requests — both fail closed if unset.
+
+### 11. Base Sepolia funding path
+
+`POST /api/rooster/offers/[offerId]/fund` is the single, capability-gated, idempotent entry point that actually moves funds: it re-fetches live offer status from Rooster (never trusts a client-supplied deposit address/amount), runs the capability check, and — only for a genuinely new idempotency key — calls `BaseSepoliaSettlementAdapter.fund()`, which submits a real signed USDC `transfer()` on Base Sepolia and waits for a real on-chain receipt before marking the reconciliation record `CONFIRMED`.
+
+### 12. Refund handling
+
+`sandboxOutcome: "refund"` forces the simulated post to fail, which triggers Rooster's real refund path — 100% of what was sent (offer + marketplace fee) returns to `agentWallet`, no cut taken. `npm run rooster:refund-test` runs this live and reconciles the result. Under real, non-sandbox offers, a refund can only be forced by an actual post that Rooster later judges unverifiable — not something this repo can trigger on demand.
+
+### 13. Security
+
+- `ROOSTER_AGENT_KEY`, `EVM_SETTLEMENT_PRIVATE_KEY`, and `ROOSTER_OPERATOR_KEY` are environment-only, never hardcoded, never logged (`lib/rooster/logger.ts` actively redacts known secret shapes even if one is accidentally passed in).
+- `RoosterClient` enforces HTTPS, times out every call, retries only transient (429/5xx) failures with backoff, and throttles outgoing requests to stay under Rooster's ~120 calls/hour per-key limit.
 - Every funding operation is idempotent (`lib/rooster/ledger-store.ts`) — retries, timeouts, and process restarts can never double-fund an offer.
 - Mainnet funding requires **both** `SETTLEMENT_NETWORK=base` **and** `ROOSTER_ALLOW_MAINNET=true` — neither flag alone is enough, and nothing in the codebase sets either automatically.
-- **No Sui→Base bridge exists.** `SettlementAdapter.bridgeFromSui()` always throws `SettlementNotImplementedError` with an explanation — the settlement wallet must be manually funded with testnet USDC (a Base Sepolia faucet) today, exactly as the Sui Treasury is manually funded via `scripts/deposit-treasury.ts`. This is a real, intentional gap, not an oversight.
+- `POST /api/rooster/capabilities` requires a matching `x-operator-key` and enforces `ROOSTER_MAX_CAPABILITY_CENTS` server-side — both fail closed if unset, so the route refuses all requests rather than defaulting open.
+- **No Sui→Base bridge exists.** `SettlementAdapter.bridgeFromSui()` always throws `SettlementNotImplementedError` with an explanation — the settlement wallet must be manually funded (a Base Sepolia faucet today; a real funding source at mainnet), exactly as the Sui Treasury is manually funded via `scripts/deposit-treasury.ts`. This is a real, intentional gap, not an oversight — see §14.
 - Velo402 never receives or custodies Rooster creator payout keys, and Rooster never receives any Velo402 or Sui key material.
 
-### 12. Future mainnet integration
+### 14. Why Sui→Base bridging isn't automated (yet)
 
-Moving `SETTLEMENT_NETWORK` to `base` (plus the explicit `ROOSTER_ALLOW_MAINNET=true` opt-in) is a configuration change, not a rewrite — the same client, capability model, ledger, and adapter code paths apply. What's still required before that's safe to flip on: a real Sui→Base funds-movement mechanism (see Security above), a live Rooster production API key and window to exercise a real accepted/funded/released offer, and an operator decision on capability issuance limits for production traffic.
+The Sui Treasury holds native **SUI**; Rooster settles in **USDC on Base**. Bridging here isn't "move the same asset cross-chain" — it's "convert SUI→USDC, then move that USDC to Base," two hops regardless of mechanism. Three options were evaluated:
+
+1. **Circle CCTP** (burn/mint USDC cross-chain) — clean if/once it supports Sui as a source chain; still requires a SUI→USDC swap on Sui first, since CCTP moves USDC, not SUI.
+2. **Manual operator-triggered rebalancer script** — same pattern as `scripts/deposit-treasury.ts`: an operator swaps SUI→USDC and sends it to the Base settlement wallet by hand. Minimal engineering, no new smart-contract trust surface, doesn't scale past manual pilot volume.
+3. **Dedicated bridge protocol** (Wormhole, deBridge, etc.) — more integration work and a new trust assumption (the bridge's own validator set/contracts) stacked on top of Sui's and Base's.
+
+Given this is still a pre-mainnet pilot, **option 2 is the current plan**: keep funding manual and scripted rather than take on bridge risk before real volume justifies it.
+
+### 15. Roadmap to mainnet
+
+Moving `SETTLEMENT_NETWORK` to `base` (plus the explicit `ROOSTER_ALLOW_MAINNET=true` opt-in) is a configuration change, not a rewrite — the same client, capability model, ledger, and adapter code paths apply. What's still required: a decided Sui→Base funding approach (§14), the settlement wallet funded with real mainnet USDC, a production capability-issuance policy (`ROOSTER_MAX_CAPABILITY_CENTS` sized for real spend, not this pilot's $20 testnet ceiling), and the remaining Rooster partnership milestones (§4): one real mainnet offer funded, and this documentation.
 
 ---
 *Built for Sui Overflow 2026. See `FINAL_REPORT.md` (if provided) for deeper architectural dives.*
