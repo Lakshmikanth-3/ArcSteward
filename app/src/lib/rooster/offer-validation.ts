@@ -22,17 +22,30 @@ export function validateOfferInput(input: OfferInput): void {
     issues.push("testMode must be explicitly true or false.");
   }
 
-  const audience = input.audience ?? "targeted";
-  if (audience === "targeted") {
-    if (!input.creatorCode || input.creatorCode.trim().length === 0) {
-      issues.push('creatorCode is required when audience is "targeted".');
+  if (input.sandbox && input.testMode) {
+    issues.push("sandbox and testMode are mutually exclusive.");
+  }
+
+  if (input.sandbox) {
+    if (!input.agentWallet || input.agentWallet.trim().length === 0) {
+      issues.push("agentWallet is required for a sandbox offer (refund destination).");
     }
-  } else if (audience === "board") {
-    if (input.creatorCode) {
-      issues.push('creatorCode must be omitted when audience is "board".');
+    if (!input.sandboxChain) {
+      issues.push("sandboxChain is required for a sandbox offer.");
     }
   } else {
-    issues.push(`audience must be "targeted" or "board", got "${String(audience)}".`);
+    const audience = input.audience ?? "targeted";
+    if (audience === "targeted") {
+      if (!input.creatorCode || input.creatorCode.trim().length === 0) {
+        issues.push('creatorCode is required when audience is "targeted".');
+      }
+    } else if (audience === "board") {
+      if (input.creatorCode) {
+        issues.push('creatorCode must be omitted when audience is "board".');
+      }
+    } else {
+      issues.push(`audience must be "targeted" or "board", got "${String(audience)}".`);
+    }
   }
 
   const d = input.deliverable;
@@ -65,10 +78,10 @@ export function validateOfferInput(input: OfferInput): void {
   if (!Number.isFinite(input.priceCents) || input.priceCents <= 0) {
     issues.push("priceCents must be a positive number.");
   } else {
-    const minCents = input.testMode ? ABSOLUTE_MIN_CENTS : REAL_OFFER_MIN_CENTS;
+    const minCents = input.testMode || input.sandbox ? ABSOLUTE_MIN_CENTS : REAL_OFFER_MIN_CENTS;
     if (input.priceCents < minCents) {
       issues.push(
-        `priceCents ${input.priceCents} is below the ${input.testMode ? "test-mode" : "real-offer"} ` +
+        `priceCents ${input.priceCents} is below the ${minCents === ABSOLUTE_MIN_CENTS ? "test-mode/sandbox" : "real-offer"} ` +
           `minimum of ${minCents}c ($${(minCents / 100).toFixed(2)}).`,
       );
     }

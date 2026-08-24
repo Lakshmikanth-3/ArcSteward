@@ -2,14 +2,14 @@
  * scripts/rooster-e2e-test.ts
  *
  * End-to-end smoke test for the Rooster Agents integration, styled after
- * scripts/e2e-test.ts. Exercises the REAL Rooster REST API in testMode, then
- * — only as far as Rooster's live response actually allows — the Velo402
- * capability check and real Base Sepolia settlement path.
- *
- * Per Rooster's own docs, testMode offers are screened/priced end-to-end but
- * NEVER produce real escrow funding (no human ever accepts a test offer, so
- * it never reaches awaiting_funding). This script says so explicitly and
- * stops rather than fabricate a funding step that didn't happen.
+ * scripts/e2e-test.ts. Exercises the REAL Rooster REST API using sandbox
+ * mode (server v1.3.0, confirmed live 2026-08-24): auto-accepted by a
+ * labelled, explicitly-non-human Rooster sandbox creator, so it reaches a
+ * genuine awaiting_funding state with a real per-offer Base Sepolia escrow
+ * wallet — unlike testMode, which stops at pending_human_decision forever
+ * since no human ever accepts a simulation. Exercises the Velo402
+ * capability check and real Base Sepolia settlement path end-to-end,
+ * including Rooster's own escrow release back to the creator.
  *
  * Run: npx tsx --env-file=.env scripts/rooster-e2e-test.ts
  */
@@ -24,7 +24,7 @@ import {
   getRecordByOfferId,
   updateRecordState,
 } from "../src/lib/rooster/ledger-store";
-import { getSettlementNetwork } from "../src/lib/rooster/config";
+import { getBaseChainConfig, getSettlementNetwork } from "../src/lib/rooster/config";
 import { BaseSepoliaSettlementAdapter } from "../src/lib/rooster/settlement-adapter";
 import {
   CapabilityDeniedError,
@@ -32,6 +32,7 @@ import {
   type OfferInput,
   type RoosterCapability,
 } from "../src/lib/rooster/types";
+import { privateKeyToAccount } from "viem/accounts";
 
 const AGENT_ID = "velo402-pilot-agent";
 
@@ -53,18 +54,21 @@ async function main() {
   console.log(" Velo402 x Rooster Agents -- Base Sepolia E2E Test");
   console.log("===================================================");
 
-  step(1, "Build + validate a testMode offer");
+  step(1, "Build + validate a sandbox offer");
+  const network = getSettlementNetwork();
+  const agentWallet = privateKeyToAccount(getBaseChainConfig(network).privateKey).address;
   const offerInput: OfferInput = {
-    creatorCode: "JESSICASMART",
-    audience: "targeted",
     deliverable: {
       platform: "x",
       kind: "post",
       caption: "Velo402 x Rooster integration smoke test #ad",
     },
-    priceCents: 2500,
+    priceCents: 500,
     currency: "USDC",
-    testMode: true,
+    testMode: false,
+    sandbox: true,
+    sandboxChain: "BASE-SEPOLIA",
+    agentWallet,
     agentName: "Velo402PilotAgent",
     agentOperator: "Velo402",
   };
@@ -90,16 +94,15 @@ async function main() {
     `Poll finished -- state: ${poll.status.state} (timedOut: ${poll.timedOut}, attempts: ${poll.attempts})`,
   );
 
-  step(4, "Check for funding info (only present once a human accepts a real offer)");
+  step(4, "Check for funding info (present once the sandbox creator auto-accepts)");
   if (!poll.status.funding) {
     info(
-      "No funding info returned -- expected for a testMode offer per Rooster's docs " +
-        '("testMode bypasses human contact, posting, and fund movement"). ' +
-        "Stopping here rather than fabricate a funding step that did not happen.",
+      "No funding info returned -- offer did not reach awaiting_funding within the poll " +
+        "window. Stopping here rather than fabricate a funding step that did not happen.",
     );
     console.log("\n===================================================");
     console.log(" Offer submission + status polling verified LIVE against the real Rooster API.");
-    console.log(" Funding/settlement steps require a real (non-test), human-accepted offer.");
+    console.log(" Funding/settlement steps require the offer to reach awaiting_funding.");
     console.log("===================================================\n");
     return;
   }
@@ -140,7 +143,6 @@ async function main() {
   }
 
   step(7, "Prepare settlement (idempotent PENDING ledger record)");
-  const network = getSettlementNetwork();
   const idempotencyKey = computeIdempotencyKey(AGENT_ID, offerId, "fund");
   await createPendingRecord({
     idempotencyKey,
@@ -183,7 +185,10 @@ async function main() {
   }
 
   step(11, "Poll Rooster again for post/release");
-  const finalPoll = await waitForOfferStatus(offerId, { client, timeoutMs: 60_000, intervalMs: 5_000 });
+  // Rooster's own funding-watcher + release lag is ~1.5-2.5min in practice
+  // (live-observed 2026-08-24), well past the ~10s escrow-provisioning speed
+  // -- give it real budget rather than reporting a false timeout.
+  const finalPoll = await waitForOfferStatus(offerId, { client, timeoutMs: 210_000, intervalMs: 10_000 });
   ok(`Final Rooster state: ${finalPoll.status.state}`);
 
   step(15, "Reconciliation record");

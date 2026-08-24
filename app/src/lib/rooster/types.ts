@@ -27,9 +27,12 @@ export interface Deliverable {
   linkUrl?: string;
 }
 
+export type SandboxChain = "BASE-SEPOLIA";
+export type SandboxOutcome = "refund";
+
 /** Developer-facing offer input. RoosterClient flattens this to Rooster's real wire schema. */
 export interface OfferInput {
-  creatorCode?: string; // required when audience === "targeted" (the default)
+  creatorCode?: string; // required when audience === "targeted" (the default) and not sandbox
   audience?: Audience;
   boardEligibility?: string; // board offers only
   deliverable: Deliverable;
@@ -40,6 +43,18 @@ export interface OfferInput {
   agentOperator?: string;
   agentEndpoint?: string;
   agentWallet?: string;
+  /**
+   * Auto-accepted by a labelled, explicitly-non-human Rooster sandbox
+   * creator — reaches real awaiting_funding/funded/released states against
+   * a genuine per-offer testnet escrow wallet, without needing a real human
+   * to accept. Mutually exclusive with testMode. Confirmed live 2026-08-24
+   * (server v1.3.0). creatorCode/agentName are ignored by Rooster for
+   * sandbox offers; agentWallet is required (refund destination).
+   */
+  sandbox?: boolean;
+  sandboxChain?: SandboxChain;
+  /** Omit for the default (post succeeds, escrow releases); "refund" forces the post to fail. */
+  sandboxOutcome?: SandboxOutcome;
 }
 
 export interface Offer {

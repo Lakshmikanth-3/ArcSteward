@@ -60,6 +60,20 @@ function normalizeState(raw: unknown): OfferState {
   return STATE_MAP[raw.toLowerCase()] ?? "unknown";
 }
 
+/**
+ * Rooster's sandbox/real funding responses give the owed amount as
+ * amount_usdc, a decimal USD string (e.g. "5.75") — not integer cents.
+ * Confirmed live 2026-08-24. Falls back to an integer-cents field if one is
+ * ever present instead.
+ */
+function parseFundingAmountCents(fundingRaw: Record<string, unknown>): number {
+  const centsField = fundingRaw.amountCents ?? fundingRaw.amount_cents;
+  if (centsField !== undefined) return Number(centsField);
+  const usdField = fundingRaw.amount_usdc ?? fundingRaw.amountUsdc;
+  if (usdField !== undefined) return Math.round(Number(usdField) * 100);
+  return 0;
+}
+
 export class RoosterClient {
   private readonly cfg: RoosterConfig;
   private readonly fetchImpl: typeof globalThis.fetch;
@@ -211,6 +225,9 @@ export class RoosterClient {
       priceCents: input.priceCents,
       currency: input.currency,
       testMode: input.testMode,
+      sandbox: input.sandbox,
+      sandboxChain: input.sandboxChain,
+      sandboxOutcome: input.sandboxOutcome,
     };
     for (const key of Object.keys(payload)) {
       if (payload[key] === undefined) delete payload[key];
@@ -243,11 +260,18 @@ export class RoosterClient {
     const fundingRaw = data.funding as Record<string, unknown> | null | undefined;
     return {
       offerId,
-      state: normalizeState(data.status ?? data.state),
+      // escrowStatus is the authoritative money-lifecycle field once an offer is
+      // accepted -- confirmed live 2026-08-24: after a sandbox release, escrowStatus
+      // reads "released" (releaseTx/releasedAt populated) while status stays stuck at
+      // "posted" indefinitely. status is a fallback for pre-acceptance states (e.g.
+      // testMode's posted_simulated) where escrowStatus is absent.
+      state: normalizeState(data.escrowStatus ?? data.status ?? data.state),
       funding: fundingRaw
         ? {
-            depositAddress: String(fundingRaw.depositAddress ?? fundingRaw.address ?? ""),
-            amountCents: Number(fundingRaw.amountCents ?? fundingRaw.amount_cents ?? 0),
+            depositAddress: String(
+              fundingRaw.depositAddress ?? fundingRaw.deposit_address ?? fundingRaw.address ?? "",
+            ),
+            amountCents: parseFundingAmountCents(fundingRaw),
             currency: ((fundingRaw.currency as Currency | undefined) ?? "USDC") as Currency,
             deadline: fundingRaw.deadline as string | undefined,
           }
