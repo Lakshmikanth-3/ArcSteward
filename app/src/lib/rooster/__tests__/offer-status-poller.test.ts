@@ -37,6 +37,28 @@ test("resolves immediately when the first poll returns a terminal state", async 
   assert.equal(result.status.state, "released");
 });
 
+test("stops polling on lifecycle.terminal even for a state the old TERMINAL_OFFER_STATES set wouldn't recognize", async () => {
+  // "escrow_error" is a new lifecycle-only terminal value with no equivalent
+  // in the legacy OfferState — proves the poller switched to trusting
+  // `terminal` directly rather than re-deriving it from `state`.
+  const fetchImpl = (async () =>
+    jsonResponse({ status: "some_unmapped_state", lifecycle: "escrow_error", terminal: true })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+  const clock = makeFakeClock();
+
+  const result = await waitForOfferStatus("offer_1", {
+    client,
+    now: clock.now,
+    sleep: clock.sleep,
+    timeoutMs: 60_000,
+    intervalMs: 1000,
+  });
+
+  assert.equal(result.timedOut, false);
+  assert.equal(result.attempts, 1);
+  assert.equal(result.status.lifecycle, "escrow_error");
+});
+
 test("polls repeatedly until a terminal state is reached", async () => {
   let calls = 0;
   const fetchImpl = (async () => {

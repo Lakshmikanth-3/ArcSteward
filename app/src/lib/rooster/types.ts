@@ -106,9 +106,56 @@ export const TERMINAL_OFFER_STATES: ReadonlySet<OfferState> = new Set([
   "posted_simulated",
 ]);
 
+/**
+ * Rooster's `lifecycle` field (server-side fix live 2026-08-25) — the single
+ * authoritative source of truth for an offer's stage, replacing the old
+ * two-field `status`/`escrowStatus` split where `status` froze at "posted"
+ * forever after acceptance. `status`/`escrowStatus` still ship unchanged
+ * underneath (see OfferState above) for callers that already depend on them.
+ */
+const OFFER_LIFECYCLE_VALUES = [
+  "pending_human_decision",
+  "countered",
+  "rejected",
+  "expired",
+  "accepted",
+  "provisioning_escrow",
+  "awaiting_funding",
+  "funded_delivery_in_progress",
+  "post_failed_refund_pending",
+  "delivered_awaiting_creator_wallet",
+  "releasing",
+  "completed",
+  "refunded",
+  "refund_failed",
+  "expired_unfunded",
+  "escrow_error",
+  "test_completed_simulated",
+] as const;
+
+export type OfferLifecycle = (typeof OFFER_LIFECYCLE_VALUES)[number] | "unknown";
+
+/** Every recognized lifecycle value — used to validate/normalize a raw API string. */
+export const OFFER_LIFECYCLE_SET: ReadonlySet<string> = new Set(OFFER_LIFECYCLE_VALUES);
+
+export const TERMINAL_LIFECYCLE_VALUES: ReadonlySet<OfferLifecycle> = new Set([
+  "rejected",
+  "expired",
+  "completed",
+  "refunded",
+  "refund_failed",
+  "expired_unfunded",
+  "escrow_error",
+  "test_completed_simulated",
+]);
+
 export interface OfferStatus {
   offerId: string;
   state: OfferState;
+  /** Rooster's authoritative lifecycle field. Switch on this, not `state`. */
+  lifecycle: OfferLifecycle;
+  /** True once the offer has reached a terminal lifecycle — stop polling. */
+  terminal: boolean;
   /** Present once the human accepts and escrow funding info is available. */
   funding?: {
     depositAddress: string;

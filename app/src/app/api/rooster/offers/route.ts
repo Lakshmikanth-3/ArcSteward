@@ -9,6 +9,18 @@ import { RoosterClient } from "@/lib/rooster/rooster-client";
 import { validateOfferInput } from "@/lib/rooster/offer-validation";
 import { RoosterApiError, RoosterValidationError, type OfferInput } from "@/lib/rooster/types";
 import { roosterLogger } from "@/lib/rooster/logger";
+import { listRecords } from "@/lib/rooster/ledger-store";
+
+/**
+ * GET — lists every offer this app has attempted to fund, from the local
+ * reconciliation ledger (Rooster has no "list my offers" endpoint). Each
+ * record's live lifecycle/state is fetched on demand per-offer via
+ * /api/rooster/offers/[offerId]/status, not eagerly here.
+ */
+export async function GET() {
+  const records = await listRecords();
+  return NextResponse.json({ ok: true, records });
+}
 
 export async function POST(req: NextRequest) {
   try {

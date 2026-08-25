@@ -17,12 +17,16 @@
 import { getRoosterConfig, type RoosterConfig } from "./config";
 import { roosterLogger } from "./logger";
 import {
+  OFFER_LIFECYCLE_SET,
   RoosterApiError,
+  TERMINAL_LIFECYCLE_VALUES,
+  TERMINAL_OFFER_STATES,
   type Creator,
   type Currency,
   type MarketBenchmark,
   type Offer,
   type OfferInput,
+  type OfferLifecycle,
   type OfferState,
   type OfferStatus,
 } from "./types";
@@ -60,14 +64,20 @@ function normalizeState(raw: unknown): OfferState {
   return STATE_MAP[raw.toLowerCase()] ?? "unknown";
 }
 
+function normalizeLifecycle(raw: unknown): OfferLifecycle {
+  if (typeof raw === "string" && OFFER_LIFECYCLE_SET.has(raw)) return raw as OfferLifecycle;
+  return "unknown";
+}
+
 /**
  * Rooster's sandbox/real funding responses give the owed amount as
  * amount_usdc, a decimal USD string (e.g. "5.75") — not integer cents.
- * Confirmed live 2026-08-24. Falls back to an integer-cents field if one is
- * ever present instead.
+ * Confirmed live 2026-08-24. Falls back to an integer-cents field
+ * (amountUsdcCents, or the older amountCents/amount_cents) if one is present
+ * instead.
  */
 function parseFundingAmountCents(fundingRaw: Record<string, unknown>): number {
-  const centsField = fundingRaw.amountCents ?? fundingRaw.amount_cents;
+  const centsField = fundingRaw.amountUsdcCents ?? fundingRaw.amountCents ?? fundingRaw.amount_cents;
   if (centsField !== undefined) return Number(centsField);
   const usdField = fundingRaw.amount_usdc ?? fundingRaw.amountUsdc;
   if (usdField !== undefined) return Math.round(Number(usdField) * 100);
@@ -258,14 +268,26 @@ export class RoosterClient {
     const data = (envelope.offer as Record<string, unknown> | undefined) ?? envelope;
 
     const fundingRaw = data.funding as Record<string, unknown> | null | undefined;
+    const state = normalizeState(data.escrowStatus ?? data.status ?? data.state);
+    const lifecycle = normalizeLifecycle(data.lifecycle);
+    // `terminal` is Rooster's own authoritative flag (fixed server-side
+    // 2026-08-25) — trust it when present. Fall back to the old state-based
+    // guess only for responses that predate the fix (e.g. recorded test
+    // fixtures), so older callers/tests don't need to change.
+    const terminal = typeof data.terminal === "boolean" ? data.terminal : TERMINAL_OFFER_STATES.has(state);
+
     return {
       offerId,
       // escrowStatus is the authoritative money-lifecycle field once an offer is
       // accepted -- confirmed live 2026-08-24: after a sandbox release, escrowStatus
       // reads "released" (releaseTx/releasedAt populated) while status stays stuck at
       // "posted" indefinitely. status is a fallback for pre-acceptance states (e.g.
-      // testMode's posted_simulated) where escrowStatus is absent.
-      state: normalizeState(data.escrowStatus ?? data.status ?? data.state),
+      // testMode's posted_simulated) where escrowStatus is absent. Superseded by
+      // `lifecycle`/`terminal` above for polling decisions, kept for callers that
+      // already depend on `state`.
+      state,
+      lifecycle,
+      terminal,
       funding: fundingRaw
         ? {
             depositAddress: String(

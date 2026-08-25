@@ -14,6 +14,7 @@ const NAV = [
   { href: "/marketplace", icon: "storefront",          label: "Knowledge" },
   { href: "/trading",     icon: "candlestick_chart",   label: "Trading Desk" },
   { href: "/guardian",    icon: "shield_with_heart",   label: "Guardian" },
+  { href: "/rooster",     icon: "receipt_long",        label: "Rooster Offers" },
 ];
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {

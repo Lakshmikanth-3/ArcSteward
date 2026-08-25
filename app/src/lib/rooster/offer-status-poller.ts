@@ -4,7 +4,7 @@
  * webhooks/callbacks for this integration, so polling is the only way to
  * observe state changes.
  */
-import { TERMINAL_OFFER_STATES, type OfferStatus } from "./types";
+import type { OfferStatus } from "./types";
 import type { RoosterClient } from "./rooster-client";
 import { roosterLogger } from "./logger";
 
@@ -54,9 +54,10 @@ export async function waitForOfferStatus(
       roosterLogger.info("Polled Rooster offer status", {
         offerId,
         state: lastStatus.state,
+        lifecycle: lastStatus.lifecycle,
         attempts,
       });
-      if (TERMINAL_OFFER_STATES.has(lastStatus.state)) {
+      if (lastStatus.terminal) {
         return { status: lastStatus, timedOut: false, attempts };
       }
     } catch (err) {
@@ -78,7 +79,7 @@ export async function waitForOfferStatus(
   if (!lastStatus) {
     // Never got a single successful response — synthesize an "unknown"
     // status rather than throw, so callers can inspect timedOut and decide.
-    lastStatus = { offerId, state: "unknown", raw: null };
+    lastStatus = { offerId, state: "unknown", lifecycle: "unknown", terminal: false, raw: null };
   }
   roosterLogger.warn("waitForOfferStatus timed out", {
     offerId,

@@ -44,6 +44,12 @@ export async function getRecordByOfferId(
   return Object.values(all).find((r) => r.offerId === offerId);
 }
 
+/** All reconciliation records, most recently updated first. */
+export async function listRecords(): Promise<ReconciliationRecord[]> {
+  const all = await store().getAll();
+  return Object.values(all).sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+
 export interface CreatePendingRecordParams {
   idempotencyKey: string;
   agentId: string;

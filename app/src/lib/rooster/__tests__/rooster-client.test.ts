@@ -152,6 +152,57 @@ test("getOfferStatus unwraps the real { ok, offer: {...} } envelope Rooster actu
   assert.equal(status.refundTxHash, undefined);
 });
 
+test("getOfferStatus trusts Rooster's authoritative lifecycle/terminal fields when present", async () => {
+  // Shape confirmed live 2026-08-25 after Rooster's server-side fix — `status`
+  // still freezes at "posted", but `lifecycle`/`terminal` now report the truth.
+  const fetchImpl = (async () =>
+    jsonResponse({
+      offer: {
+        status: "posted",
+        escrowStatus: "released",
+        lifecycle: "completed",
+        terminal: true,
+        releaseTx: "0xabc",
+      },
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.lifecycle, "completed");
+  assert.equal(status.terminal, true);
+  assert.equal(status.state, "released"); // legacy field still derived from escrowStatus
+});
+
+test("getOfferStatus falls back to state-derived terminal when lifecycle/terminal are absent", async () => {
+  const fetchImpl = (async () => jsonResponse({ status: "released" })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.lifecycle, "unknown");
+  assert.equal(status.terminal, true); // "released" is in TERMINAL_OFFER_STATES
+});
+
+test("getOfferStatus maps an unrecognized lifecycle string to 'unknown' instead of throwing", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({ status: "awaiting_funding", lifecycle: "some_future_lifecycle_we_havent_seen" })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.lifecycle, "unknown");
+});
+
+test("getOfferStatus parses funding.amountUsdcCents (Rooster's new integer-cents shape)", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      status: "awaiting_funding",
+      funding: { depositAddress: "0xDEAD", amountUsdcCents: 575, currency: "USDC" },
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.funding?.amountCents, 575);
+});
+
 test("getOfferStatus maps an unrecognized state string to 'unknown' instead of throwing", async () => {
   const fetchImpl = (async () => jsonResponse({ status: "some_future_state_we_havent_seen" })) as typeof fetch;
   const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
