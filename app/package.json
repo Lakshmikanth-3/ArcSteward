@@ -11,6 +11,8 @@
     "encrypt:dataset": "tsx scripts/encrypt-and-publish-dataset.ts",
     "start:agent": "tsx --env-file=.env agent/agent-runner.ts",
     "test": "tsx --test \"src/lib/rooster/__tests__/**/*.test.ts\"",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "rooster:e2e": "tsx --env-file=.env scripts/rooster-e2e-test.ts",
     "rooster:refund-test": "tsx --env-file=.env scripts/rooster-refund-test.ts",
     "rooster:balance": "tsx --env-file=.env scripts/check-settlement-balance.ts"
@@ -28,6 +30,7 @@
     "viem": "^2.21.0"
   },
   "devDependencies": {
+    "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
