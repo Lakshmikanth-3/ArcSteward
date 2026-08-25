@@ -149,6 +149,48 @@ export const TERMINAL_LIFECYCLE_VALUES: ReadonlySet<OfferLifecycle> = new Set([
   "test_completed_simulated",
 ]);
 
+/**
+ * Outcome classification, layered on top of TERMINAL_LIFECYCLE_VALUES.
+ * Deliberately narrow: only the lifecycle values the integration spec
+ * actually names get a bucket. `rejected`/`expired`/`expired_unfunded` are
+ * terminal (see above) but benign-declined outcomes, not failures — no
+ * money was ever at risk — so they're intentionally left out of
+ * ATTENTION_LIFECYCLE_VALUES rather than lumped in with refund_failed/
+ * escrow_error, which mean something is actually stuck and needs a human.
+ */
+export const SUCCESS_LIFECYCLE_VALUES: ReadonlySet<OfferLifecycle> = new Set([
+  "completed",
+  "test_completed_simulated",
+]);
+
+export const REFUND_LIFECYCLE_VALUES: ReadonlySet<OfferLifecycle> = new Set([
+  "refunded",
+]);
+
+/** Terminal outcomes that need a human to look, distinct from a benign decline/expiry. */
+export const ATTENTION_LIFECYCLE_VALUES: ReadonlySet<OfferLifecycle> = new Set([
+  "refund_failed",
+  "escrow_error",
+]);
+
+export type LifecycleOutcome = "success" | "refund_success" | "attention_required" | "pending";
+
+/**
+ * Classifies a lifecycle value for callers that just want to know "did this
+ * work." Anything terminal but not in one of the three named Sets above
+ * (e.g. rejected, expired, expired_unfunded) — and anything non-terminal —
+ * falls out as "pending" by omission, matching OFFER_LIFECYCLE_SET's own
+ * never-throw-just-don't-match convention. Never exhaustively switches over
+ * OfferLifecycle, so a new value Rooster ships tomorrow doesn't need a code
+ * change here to stay safe (it just stays "pending").
+ */
+export function classifyLifecycleOutcome(lifecycle: OfferLifecycle): LifecycleOutcome {
+  if (SUCCESS_LIFECYCLE_VALUES.has(lifecycle)) return "success";
+  if (REFUND_LIFECYCLE_VALUES.has(lifecycle)) return "refund_success";
+  if (ATTENTION_LIFECYCLE_VALUES.has(lifecycle)) return "attention_required";
+  return "pending";
+}
+
 export interface OfferStatus {
   offerId: string;
   state: OfferState;
@@ -161,6 +203,8 @@ export interface OfferStatus {
     depositAddress: string;
     /** Actual amount owed INCLUDING the marketplace fee — not priceCents. */
     amountCents: number;
+    /** Canonical decimal-string form of amountCents (e.g. "5.75") — never float math, derived via integer cents. */
+    amountUsdc: string;
     currency: Currency;
     deadline?: string; // ISO timestamp, ~72h from acceptance
   };
@@ -169,6 +213,14 @@ export interface OfferStatus {
   releaseTxHash?: string;
   /** Present once Rooster has refunded the agent (real offers only). */
   refundTxHash?: string;
+  /**
+   * ISO timestamp — only meaningful when lifecycle is
+   * "delivered_awaiting_creator_wallet": the creator delivered but hasn't
+   * supplied a payout wallet yet, and funds auto-refund at this time if one
+   * still hasn't been supplied. Passthrough only — never invented if
+   * Rooster's response doesn't include it.
+   */
+  autoRefundAt?: string;
   raw: unknown;
 }
 
@@ -200,8 +252,16 @@ export interface ReconciliationRecord {
   depositAddress?: string;
   amountCents?: number;
   network: string;
+  /** Our own funding transaction hash — tracked independently of Rooster's release/refund tx below. */
   txHash?: string;
+  /** Tracks OUR funding tx only. Rooster's offer outcome is tracked via `lifecycle` below instead. */
   state: FundingState;
+  /** Rooster's own offer lifecycle, opportunistically merged in via reconcileFromStatus(). */
+  lifecycle?: OfferLifecycle;
+  /** Present once Rooster has released escrow to the creator. */
+  releaseTx?: string;
+  /** Present once Rooster has refunded the agent. */
+  refundTx?: string;
   createdAt: string;
   updatedAt: string;
   error?: string;

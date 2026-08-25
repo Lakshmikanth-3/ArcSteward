@@ -163,3 +163,8 @@ export class BaseSepoliaSettlementAdapter implements SettlementAdapter {
     );
   }
 }
+
+/** DI seam so callers (e.g. fund/route.ts) can inject a test double instead of a real adapter. */
+export function createSettlementAdapter(network?: SettlementNetwork): SettlementAdapter {
+  return new BaseSepoliaSettlementAdapter(network);
+}

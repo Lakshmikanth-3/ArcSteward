@@ -7,6 +7,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { RoosterClient } from "@/lib/rooster/rooster-client";
 import { RoosterApiError } from "@/lib/rooster/types";
+import { reconcileFromStatus } from "@/lib/rooster/ledger-store";
+import { roosterLogger } from "@/lib/rooster/logger";
 
 export async function GET(
   _req: NextRequest,
@@ -16,6 +18,20 @@ export async function GET(
   try {
     const client = new RoosterClient();
     const status = await client.getOfferStatus(offerId);
+
+    // Best-effort: opportunistically merge Rooster's own lifecycle/release/
+    // refund fields into the matching ledger record, if one exists. Never
+    // lets a reconciliation-write failure break the status response itself.
+    try {
+      await reconcileFromStatus(offerId, status);
+    } catch (reconcileErr) {
+      const msg = reconcileErr instanceof Error ? reconcileErr.message : String(reconcileErr);
+      roosterLogger.warn("Ledger reconciliation from live status failed — status still returned", {
+        offerId,
+        result: msg,
+      });
+    }
+
     return NextResponse.json({ ok: true, status });
   } catch (err: unknown) {
     if (err instanceof RoosterApiError) {

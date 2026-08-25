@@ -203,6 +203,215 @@ test("getOfferStatus parses funding.amountUsdcCents (Rooster's new integer-cents
   assert.equal(status.funding?.amountCents, 575);
 });
 
+// ─── Funding shape normalization (every shape Rooster is known to send) ────
+
+test("parses funding.deposit_address + funding.amount_usdc (snake_case, decimal string)", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      status: "awaiting_funding",
+      funding: { deposit_address: "0xSNAKE", amount_usdc: "5.75", currency: "USDC" },
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.funding?.depositAddress, "0xSNAKE");
+  assert.equal(status.funding?.amountCents, 575);
+  assert.equal(status.funding?.amountUsdc, "5.75");
+});
+
+test("parses funding.depositAddress + funding.amountUsdc (camelCase, decimal string)", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      status: "awaiting_funding",
+      funding: { depositAddress: "0xCAMEL", amountUsdc: "5.75", currency: "USDC" },
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.funding?.depositAddress, "0xCAMEL");
+  assert.equal(status.funding?.amountCents, 575);
+  assert.equal(status.funding?.amountUsdc, "5.75");
+});
+
+test("falls back to funding.address when depositAddress/deposit_address are both absent", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      status: "awaiting_funding",
+      funding: { address: "0xFALLBACK", amountUsdcCents: 100 },
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.funding?.depositAddress, "0xFALLBACK");
+});
+
+test("handles amount_usdc sent as a JSON number, not a string (defensive)", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      status: "awaiting_funding",
+      funding: { depositAddress: "0xNUM", amount_usdc: 5.75 },
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.funding?.amountCents, 575);
+  assert.equal(status.funding?.amountUsdc, "5.75");
+});
+
+test("amountUsdcCents takes precedence over a decimal-string amount when both are present", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      status: "awaiting_funding",
+      funding: { depositAddress: "0xBOTH", amountUsdcCents: 575, amount_usdc: "999.00" },
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.funding?.amountCents, 575);
+});
+
+test("a malformed/empty funding object never throws — resolves to empty address and zero amount", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({ status: "awaiting_funding", funding: {} })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.funding?.depositAddress, "");
+  assert.equal(status.funding?.amountCents, 0);
+  assert.equal(status.funding?.amountUsdc, "0.00");
+});
+
+// ─── auto_refund_at parsing ─────────────────────────────────────────────────
+
+test("parses auto_refund_at (snake_case) on delivered_awaiting_creator_wallet", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      lifecycle: "delivered_awaiting_creator_wallet",
+      terminal: false,
+      auto_refund_at: "2026-08-29T00:00:00Z",
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.lifecycle, "delivered_awaiting_creator_wallet");
+  assert.equal(status.terminal, false);
+  assert.equal(status.autoRefundAt, "2026-08-29T00:00:00Z");
+});
+
+test("parses autoRefundAt (camelCase) on delivered_awaiting_creator_wallet", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      lifecycle: "delivered_awaiting_creator_wallet",
+      terminal: false,
+      autoRefundAt: "2026-08-29T00:00:00Z",
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.autoRefundAt, "2026-08-29T00:00:00Z");
+});
+
+test("auto_refund_at is undefined, never invented, when delivered_awaiting_creator_wallet omits it", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({ lifecycle: "delivered_awaiting_creator_wallet", terminal: false })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.autoRefundAt, undefined);
+});
+
+test("an explicit null auto_refund_at resolves to undefined, not the string 'null'", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      lifecycle: "delivered_awaiting_creator_wallet",
+      terminal: false,
+      auto_refund_at: null,
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.autoRefundAt, undefined);
+});
+
+test("auto_refund_at is absent on a normal completed offer", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({ lifecycle: "completed", terminal: true, releaseTx: "0xrelease" })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.autoRefundAt, undefined);
+});
+
+test("auto_refund_at is absent on a normal refunded offer", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({ lifecycle: "refunded", terminal: true, refundTx: "0xrefund" })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.autoRefundAt, undefined);
+});
+
+// ─── Per-lifecycle-value parsing (D-K from the scenario list) ──────────────
+
+test("lifecycle=completed parses as terminal with releaseTx", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({ lifecycle: "completed", terminal: true, releaseTx: "0xrelease" })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.lifecycle, "completed");
+  assert.equal(status.terminal, true);
+  assert.equal(status.releaseTxHash, "0xrelease");
+});
+
+test("lifecycle=refunded parses as terminal with refundTx", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({ lifecycle: "refunded", terminal: true, refundTx: "0xrefund" })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.lifecycle, "refunded");
+  assert.equal(status.terminal, true);
+  assert.equal(status.refundTxHash, "0xrefund");
+});
+
+test("lifecycle=funded_delivery_in_progress parses as non-terminal", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({ lifecycle: "funded_delivery_in_progress", terminal: false })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.lifecycle, "funded_delivery_in_progress");
+  assert.equal(status.terminal, false);
+});
+
+test("lifecycle=releasing parses as non-terminal", async () => {
+  const fetchImpl = (async () => jsonResponse({ lifecycle: "releasing", terminal: false })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.lifecycle, "releasing");
+  assert.equal(status.terminal, false);
+});
+
+test("lifecycle=refund_failed parses as terminal", async () => {
+  const fetchImpl = (async () => jsonResponse({ lifecycle: "refund_failed", terminal: true })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.lifecycle, "refund_failed");
+  assert.equal(status.terminal, true);
+});
+
+test("lifecycle=escrow_error parses as terminal", async () => {
+  const fetchImpl = (async () => jsonResponse({ lifecycle: "escrow_error", terminal: true })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.lifecycle, "escrow_error");
+  assert.equal(status.terminal, true);
+});
+
 test("getOfferStatus maps an unrecognized state string to 'unknown' instead of throwing", async () => {
   const fetchImpl = (async () => jsonResponse({ status: "some_future_state_we_havent_seen" })) as typeof fetch;
   const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });

@@ -284,7 +284,7 @@ Three real bugs surfaced only by running this live traffic (not catchable by rea
 
 ### 9. Offer status polling
 
-Rooster has no webhooks for this integration. `lib/rooster/offer-status-poller.ts`'s `waitForOfferStatus(offerId, { timeout, interval })` polls with bounded backoff, stops on any terminal state (`released`, `refunded`, `rejected`, `expired_unfunded`) or on timeout, and always preserves the last known state rather than throwing. Live-observed funding-watcher + release/refund latency is ~1.5–2.5 minutes after the on-chain transfer confirms — the e2e/refund-test scripts budget 210 seconds for this final poll accordingly.
+Rooster has no webhooks for this integration. `lib/rooster/offer-status-poller.ts`'s `waitForOfferStatus(offerId, { timeout, interval })` polls with bounded backoff, stops as soon as Rooster's own `terminal` flag reads `true` (see §16 below — `terminal` is authoritative, not re-derived from `state`/`escrowStatus`), or on timeout, and always preserves the last known status rather than throwing. Live-observed funding-watcher + release/refund latency is ~1.5–2.5 minutes after the on-chain transfer confirms — the e2e/refund-test scripts budget 210 seconds for this final poll accordingly.
 
 ### 10. Capability authorization
 
@@ -320,9 +320,99 @@ The Sui Treasury holds native **SUI**; Rooster settles in **USDC on Base**. Brid
 
 Given this is still a pre-mainnet pilot, **option 2 is the current plan**: keep funding manual and scripted rather than take on bridge risk before real volume justifies it.
 
+**Full pipeline, stage by stage — implemented vs. not:**
+
+| Stage | Status |
+|---|---|
+| Sui Velo402 authorization (PolicyCap) | ✅ Implemented — pre-existing Sui contracts, untouched by this rail |
+| Capability / spend authorization | ✅ Implemented — `lib/rooster/capability.ts`, off-chain, mirrors PolicyCap semantics |
+| Settlement request | ✅ Implemented — `POST /api/rooster/offers/[offerId]/fund` |
+| Sui-side source/funding | ✅ Implemented, **manual** — Sui Treasury funded via `scripts/deposit-treasury.ts`, same pattern the Base settlement wallet would use |
+| **Sui→Base bridge/settlement mechanism** | ❌ **Not implemented** — `SettlementAdapter.bridgeFromSui()` always throws `SettlementNotImplementedError`, by design (see options above) |
+| Base Sepolia USDC | ✅ Implemented — real signed `transfer()` via viem, `lib/rooster/settlement-adapter.ts` |
+| Rooster per-offer deposit address | ✅ Implemented — minted by Rooster, read live, never trusted from a client |
+| Funding confirmation | ✅ Implemented — `waitForConfirmation()` against a real on-chain receipt before the ledger record is ever marked `CONFIRMED` (§11) |
+| Rooster lifecycle | ✅ Implemented — §16 |
+| Release/refund | ✅ Implemented (observed) — Rooster executes it on their side; this app polls/reconciles the result, doesn't trigger it directly |
+
+The only unimplemented stage is the Sui→Base bridge itself — everything upstream and downstream of it is real, live-verified code.
+
 ### 15. Roadmap to mainnet
 
 Moving `SETTLEMENT_NETWORK` to `base` (plus the explicit `ROOSTER_ALLOW_MAINNET=true` opt-in) is a configuration change, not a rewrite — the same client, capability model, ledger, and adapter code paths apply. What's still required: a decided Sui→Base funding approach (§14), the settlement wallet funded with real mainnet USDC, a production capability-issuance policy (`ROOSTER_MAX_CAPABILITY_CENTS` sized for real spend, not this pilot's $20 testnet ceiling), and the remaining Rooster partnership milestones (§4): one real mainnet offer funded, and this documentation.
+
+### 16. Offer lifecycle states
+
+Rooster's `lifecycle` field (server-side fix live 2026-08-25) is the single authoritative source of truth for an offer's stage — `status`/`escrowStatus` still ship underneath, unchanged, for callers/diagnostics that already depend on them, but nothing in this codebase treats them as primary anymore. `terminal: true` always means stop polling; `lifecycle`/`terminal` are parsed in `lib/rooster/rooster-client.ts`, and the outcome classification below is `classifyLifecycleOutcome()` in `lib/rooster/types.ts` — this table mirrors `SUCCESS_LIFECYCLE_VALUES`/`REFUND_LIFECYCLE_VALUES`/`ATTENTION_LIFECYCLE_VALUES`/`TERMINAL_LIFECYCLE_VALUES` directly, so it can't silently drift from the code.
+
+| Lifecycle value | Terminal? | Outcome | Notes |
+|---|---|---|---|
+| `pending_human_decision` | No | pending | Waiting on a human (or the sandbox creator) to accept/reject/counter. |
+| `countered` | No | pending | Human proposed a different price. |
+| `accepted` | No | pending | Accepted, escrow not yet provisioned. |
+| `provisioning_escrow` | No | pending | Escrow being set up. |
+| `awaiting_funding` | No | pending | Deposit address minted — waiting for the agent's USDC transfer. |
+| `funded_delivery_in_progress` | No | pending | Funds detected on-chain; creator posting. |
+| `post_failed_refund_pending` | No | pending | Post failed verification; refund in progress. |
+| `delivered_awaiting_creator_wallet` | No | pending | Delivered, but the creator hasn't supplied a payout wallet yet — see §18 (`auto_refund_at`). |
+| `releasing` | No | pending | Escrow release in flight. |
+| `completed` | **Yes** | **success** | Post delivered, creator paid in full. `releaseTx` is the on-chain receipt. |
+| `refunded` | **Yes** | **refund_success** | 100% returned to the agent, no fee taken. `refundTx` is the on-chain receipt. |
+| `refund_failed` | **Yes** | **attention_required** | Something is stuck — needs a human to look, not a routine outcome. |
+| `escrow_error` | **Yes** | **attention_required** | Same — needs a human to look. |
+| `rejected` | Yes | pending¹ | Human declined. Terminal, but benign — nothing was ever funded. |
+| `expired` | Yes | pending¹ | Offer expired before acceptance. Benign. |
+| `expired_unfunded` | Yes | pending¹ | Accepted but never funded within the 72h window. Benign, no charge. |
+| `test_completed_simulated` | **Yes** | **success** | `testMode` only — nothing was ever posted or paid, simulated end-to-end. |
+
+¹ Deliberately **not** classified as `attention_required` — `rejected`/`expired`/`expired_unfunded` are terminal but nothing went wrong and no money is at risk, unlike `refund_failed`/`escrow_error`. `classifyLifecycleOutcome()` returns `"pending"` for these by omission (and for any lifecycle value this table doesn't recognize yet) rather than exhaustively switching over every value — a new value Rooster ships tomorrow stays safe without a code change here.
+
+### 17. Funding normalization
+
+Rooster's `funding` object has shipped in three shapes so far, all confirmed live and all accepted by `parseFunding()` in `lib/rooster/rooster-client.ts`:
+
+| Shape | Fields | Notes |
+|---|---|---|
+| snake_case, decimal string | `deposit_address`, `amount_usdc` (e.g. `"5.75"`) | Rooster's original shape. |
+| camelCase, decimal string | `depositAddress`, `amountUsdc` | Added alongside the snake_case shape, not a replacement. |
+| Integer cents | `amountUsdcCents` (e.g. `575`) | Takes precedence over a decimal string if both are present. |
+
+The canonical internal representation every caller sees is `{ depositAddress: string, amountCents: number, amountUsdc: string, currency, deadline? }`. Rules: an incoming cents field is used directly as an integer; a decimal string/number is rounded through cents exactly once (`Math.round(Number(x) * 100)`); `amountUsdc` is always **re-derived from those integer cents** (`(amountCents / 100).toFixed(2)`), never echoed back from a possibly-imprecise input string — no floating-point arithmetic ever touches the string representation of money. A malformed/empty `funding` object never throws; it resolves to an empty `depositAddress` and zero `amountCents` — `POST /api/rooster/offers/[offerId]/fund` is what actually rejects that (409, before any capability check or ledger write), not the parser. The full raw API response is always preserved on `OfferStatus.raw` for debugging/reconciliation regardless of how the typed fields parse.
+
+### 18. `auto_refund_at` behavior
+
+On `delivered_awaiting_creator_wallet` (the creator delivered but hasn't supplied a payout wallet yet), Rooster may include an `auto_refund_at` (or `autoRefundAt`) ISO timestamp — the deadline after which funds auto-refund in full if a payout wallet still hasn't been supplied. This is parsed into `OfferStatus.autoRefundAt` as **pure passthrough**: never invented, never defaulted, and an explicit `null` in the response resolves to `undefined` rather than the literal string `"null"`. If Rooster's response omits it, `autoRefundAt` is simply `undefined` — nothing in this codebase computes or guesses a value.
+
+### 19. Mainnet status
+
+**Mainnet is NOT YET ENABLED.** `SETTLEMENT_NETWORK=base-sepolia` and `ROOSTER_ALLOW_MAINNET=false` in both `.env.example` and this pilot's actual `.env` — verified directly, not assumed. Real funds move only when **both** `SETTLEMENT_NETWORK=base` **and** `ROOSTER_ALLOW_MAINNET=true` are set explicitly (`lib/rooster/config.ts`'s `isMainnetAllowed()`); neither flag alone does anything, and nothing in this codebase sets either automatically. No mainnet wallet is configured. See §11 and §15 for what changes when that flag does eventually flip.
+
+## Open Rooster Partnership Questions
+
+Rooster's Aug 21 email listed three proof-before-listing milestones (testnet e2e, one $25 mainnet live-fire, **seven days with zero reconciliation breaks**). Rooster's Aug 24 follow-up described the milestones differently: testnet loop, one real mainnet offer, and **documentation** users can follow without Rooster on a call. The 7-day soak period isn't mentioned in the second list. These are genuinely unresolved, not assumed one way or the other:
+
+- Does the 7-day zero-reconciliation soak still apply, or did "documentation" (this README) replace it as milestone 3?
+- What exactly are the mainnet acceptance criteria — is it strictly "one $25 live-fire," or does volume/soak time factor in?
+- Rooster asked for a named incident contact with a sub-24h response commitment — who is that, and is a verbal commitment sufficient or does it need to be written into the partnership agreement?
+- Rooster asked for KYB-lite / operator identity behind the paying agent — what does that actually require (a form, a call, a document)?
+- OFAC/sanctions screening on the funding source — is that Velo402's responsibility to implement, or does Rooster screen on their end once funds land?
+- Is any additional security review required beyond the public repo itself, before mainnet?
+
+## Wednesday Technical Review Checklist
+
+1. Demonstrate sandbox delivery (live tx proof in §7).
+2. Demonstrate sandbox refund (live tx proof in §7).
+3. Demonstrate lifecycle handling (§16 — `lifecycle`/`terminal` authoritative, `status`/`escrowStatus` diagnostic-only).
+4. Demonstrate reconciliation (`lib/rooster/ledger-store.ts`'s `reconcileFromStatus()` — offer ID, deposit address, funding tx, release/refund tx all correlated per offer).
+5. Demonstrate Base Sepolia settlement (real signed USDC transfer + real on-chain confirmation wait before marking an offer `CONFIRMED` — §11).
+6. Review the Sui→Base settlement architecture (§14 — no bridge exists yet, by design; manual operator rebalancing is the current plan).
+7. Explain what remains before mainnet (§15).
+8. Ask Rooster to clarify whether the 7-day zero-reconciliation soak still applies.
+9. Ask about KYB-lite and OFAC/sanctions screening responsibilities.
+10. Ask about the incident-contact/SLA requirement.
+11. Confirm the exact mainnet go-live criteria.
+
+No mainnet transaction is performed as part of this review.
 
 ---
 *Built for Sui Overflow 2026. See `FINAL_REPORT.md` (if provided) for deeper architectural dives.*

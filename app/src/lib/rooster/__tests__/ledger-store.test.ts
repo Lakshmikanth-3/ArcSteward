@@ -14,8 +14,17 @@ import {
   computeIdempotencyKey,
   createPendingRecord,
   getRecord,
+  getRecordByOfferId,
+  reconcileFromStatus,
   updateRecordState,
 } from "../ledger-store";
+import type { OfferStatus } from "../types";
+
+function fakeStatus(
+  overrides: Partial<Pick<OfferStatus, "lifecycle" | "releaseTxHash" | "refundTxHash">>,
+): Pick<OfferStatus, "lifecycle" | "releaseTxHash" | "refundTxHash"> {
+  return { lifecycle: "unknown", releaseTxHash: undefined, refundTxHash: undefined, ...overrides };
+}
 
 function fakeCapability(agentId: string, offerId: string): RoosterCapability {
   const now = new Date();
@@ -124,4 +133,117 @@ test("concurrent writes to different keys do not clobber each other", async () =
     const record = await getRecord(key);
     assert.ok(record, `expected a record for key ${key}`);
   }
+});
+
+test("reconcileFromStatus no-ops for an offer never funded through this app (reconciliation mismatch)", async () => {
+  const offerId = "offer-never-funded";
+  const result = await reconcileFromStatus(offerId, fakeStatus({ lifecycle: "completed", releaseTxHash: "0xr" }));
+  assert.equal(result, undefined);
+  // Must not have silently created a ledger entry from a status check alone.
+  assert.equal(await getRecordByOfferId(offerId), undefined);
+});
+
+test("reconcileFromStatus transitions SUBMITTED -> CONFIRMED on a success lifecycle + releaseTx", async () => {
+  const agentId = "agent-reconcile-success";
+  const offerId = "offer-reconcile-success";
+  const key = computeIdempotencyKey(agentId, offerId, "fund");
+  await createPendingRecord({
+    idempotencyKey: key,
+    agentId,
+    offerId,
+    capability: fakeCapability(agentId, offerId),
+    network: "base-sepolia",
+    amountCents: 2500,
+    depositAddress: "0xdeposit",
+  });
+  await updateRecordState(key, "SUBMITTED", { txHash: "0xfundtx" });
+
+  const updated = await reconcileFromStatus(
+    offerId,
+    fakeStatus({ lifecycle: "completed", releaseTxHash: "0xrelease" }),
+  );
+
+  assert.equal(updated?.state, "CONFIRMED");
+  assert.equal(updated?.lifecycle, "completed");
+  assert.equal(updated?.releaseTx, "0xrelease");
+  assert.equal(updated?.txHash, "0xfundtx"); // our own funding tx hash is untouched
+});
+
+test("reconcileFromStatus transitions to REFUNDED on a refund lifecycle + refundTx", async () => {
+  const agentId = "agent-reconcile-refund";
+  const offerId = "offer-reconcile-refund";
+  const key = computeIdempotencyKey(agentId, offerId, "fund");
+  await createPendingRecord({
+    idempotencyKey: key,
+    agentId,
+    offerId,
+    capability: fakeCapability(agentId, offerId),
+    network: "base-sepolia",
+    amountCents: 2500,
+    depositAddress: "0xdeposit",
+  });
+  await updateRecordState(key, "SUBMITTED", { txHash: "0xfundtx" });
+
+  const updated = await reconcileFromStatus(
+    offerId,
+    fakeStatus({ lifecycle: "refunded", refundTxHash: "0xrefund" }),
+  );
+
+  assert.equal(updated?.state, "REFUNDED");
+  assert.equal(updated?.lifecycle, "refunded");
+  assert.equal(updated?.refundTx, "0xrefund");
+});
+
+test("reconcileFromStatus never downgrades a previously observed value (monotonic merge)", async () => {
+  const agentId = "agent-reconcile-monotonic";
+  const offerId = "offer-reconcile-monotonic";
+  const key = computeIdempotencyKey(agentId, offerId, "fund");
+  await createPendingRecord({
+    idempotencyKey: key,
+    agentId,
+    offerId,
+    capability: fakeCapability(agentId, offerId),
+    network: "base-sepolia",
+    amountCents: 2500,
+    depositAddress: "0xdeposit",
+  });
+  await updateRecordState(key, "SUBMITTED", { txHash: "0xfundtx" });
+
+  await reconcileFromStatus(offerId, fakeStatus({ lifecycle: "completed", releaseTxHash: "0xrelease" }));
+
+  // A later poll that (implausibly, but defensively) comes back "unknown"
+  // must not erase the previously recorded lifecycle/releaseTx/CONFIRMED state.
+  const second = await reconcileFromStatus(offerId, fakeStatus({ lifecycle: "unknown" }));
+
+  assert.equal(second?.state, "CONFIRMED");
+  assert.equal(second?.lifecycle, "completed");
+  assert.equal(second?.releaseTx, "0xrelease");
+});
+
+test("reconcileFromStatus skips the write entirely when nothing would change (idempotent)", async () => {
+  const agentId = "agent-reconcile-noop";
+  const offerId = "offer-reconcile-noop";
+  const key = computeIdempotencyKey(agentId, offerId, "fund");
+  await createPendingRecord({
+    idempotencyKey: key,
+    agentId,
+    offerId,
+    capability: fakeCapability(agentId, offerId),
+    network: "base-sepolia",
+    amountCents: 2500,
+    depositAddress: "0xdeposit",
+  });
+  await updateRecordState(key, "SUBMITTED", { txHash: "0xfundtx" });
+
+  const first = await reconcileFromStatus(
+    offerId,
+    fakeStatus({ lifecycle: "completed", releaseTxHash: "0xrelease" }),
+  );
+  // Same status again — nothing should change, and updatedAt must not advance.
+  const second = await reconcileFromStatus(
+    offerId,
+    fakeStatus({ lifecycle: "completed", releaseTxHash: "0xrelease" }),
+  );
+
+  assert.equal(first?.updatedAt, second?.updatedAt);
 });

@@ -69,19 +69,48 @@ function normalizeLifecycle(raw: unknown): OfferLifecycle {
   return "unknown";
 }
 
+interface ParsedFunding {
+  depositAddress: string;
+  amountCents: number;
+  amountUsdc: string;
+  currency: Currency;
+  deadline?: string;
+}
+
 /**
- * Rooster's sandbox/real funding responses give the owed amount as
- * amount_usdc, a decimal USD string (e.g. "5.75") — not integer cents.
- * Confirmed live 2026-08-24. Falls back to an integer-cents field
- * (amountUsdcCents, or the older amountCents/amount_cents) if one is present
- * instead.
+ * Normalizes every funding-response shape Rooster is known to send into one
+ * canonical representation. Confirmed live 2026-08-24/25:
+ *   deposit_address / amount_usdc   — snake_case, amount as a decimal string ("5.75")
+ *   depositAddress / amountUsdc     — camelCase, same decimal-string amount
+ *   amountUsdcCents                 — integer cents (e.g. 575)
+ * Amount math never touches floating point on the string itself — an
+ * incoming cents field is used directly as an integer; an incoming decimal
+ * string/number is rounded through cents once, and amountUsdc is always
+ * re-derived FROM those integer cents (cents/100).toFixed(2), never by
+ * echoing back a possibly-imprecise input string.
  */
-function parseFundingAmountCents(fundingRaw: Record<string, unknown>): number {
+function parseFunding(fundingRaw: Record<string, unknown>): ParsedFunding {
+  const depositAddress = String(
+    fundingRaw.depositAddress ?? fundingRaw.deposit_address ?? fundingRaw.address ?? "",
+  );
+
   const centsField = fundingRaw.amountUsdcCents ?? fundingRaw.amountCents ?? fundingRaw.amount_cents;
-  if (centsField !== undefined) return Number(centsField);
   const usdField = fundingRaw.amount_usdc ?? fundingRaw.amountUsdc;
-  if (usdField !== undefined) return Math.round(Number(usdField) * 100);
-  return 0;
+
+  const amountCents =
+    centsField !== undefined
+      ? Math.round(Number(centsField))
+      : usdField !== undefined
+        ? Math.round(Number(usdField) * 100)
+        : 0;
+
+  return {
+    depositAddress,
+    amountCents,
+    amountUsdc: (amountCents / 100).toFixed(2),
+    currency: ((fundingRaw.currency as Currency | undefined) ?? "USDC") as Currency,
+    deadline: fundingRaw.deadline as string | undefined,
+  };
 }
 
 export class RoosterClient {
@@ -288,19 +317,16 @@ export class RoosterClient {
       state,
       lifecycle,
       terminal,
-      funding: fundingRaw
-        ? {
-            depositAddress: String(
-              fundingRaw.depositAddress ?? fundingRaw.deposit_address ?? fundingRaw.address ?? "",
-            ),
-            amountCents: parseFundingAmountCents(fundingRaw),
-            currency: ((fundingRaw.currency as Currency | undefined) ?? "USDC") as Currency,
-            deadline: fundingRaw.deadline as string | undefined,
-          }
-        : undefined,
+      funding: fundingRaw ? parseFunding(fundingRaw) : undefined,
       counterPriceCents: (data.counterPriceCents ?? data.counterPrice) as number | undefined,
       releaseTxHash: (data.releaseTx ?? data.releaseTxHash) as string | undefined,
       refundTxHash: (data.refundTx ?? data.refundTxHash) as string | undefined,
+      // Only meaningful on delivered_awaiting_creator_wallet — passthrough only,
+      // never invented. An explicit null in the payload must resolve to
+      // undefined, not the literal string "null".
+      autoRefundAt: (typeof (data.auto_refund_at ?? data.autoRefundAt) === "string"
+        ? (data.auto_refund_at ?? data.autoRefundAt)
+        : undefined) as string | undefined,
       raw: envelope,
     };
   }

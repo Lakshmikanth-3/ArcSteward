@@ -8,7 +8,8 @@
  */
 import { createHash } from "node:crypto";
 import { FileStore } from "./file-store";
-import type { FundingState, ReconciliationRecord, RoosterCapability } from "./types";
+import { REFUND_LIFECYCLE_VALUES, SUCCESS_LIFECYCLE_VALUES } from "./types";
+import type { FundingState, OfferStatus, ReconciliationRecord, RoosterCapability } from "./types";
 
 // Lazily constructed so tests can point ROOSTER_LEDGER_STORE_PATH at a temp
 // file before the first store operation, without needing dynamic import.
@@ -83,6 +84,70 @@ export async function createPendingRecord(
       createdAt: now,
       updatedAt: now,
     };
+  });
+}
+
+type ReconciledPatch = Pick<ReconciliationRecord, "lifecycle" | "releaseTx" | "refundTx" | "state">;
+
+function computeReconciledPatch(
+  current: ReconciliationRecord,
+  status: Pick<OfferStatus, "lifecycle" | "releaseTxHash" | "refundTxHash">,
+): ReconciledPatch {
+  const releaseTx = status.releaseTxHash ?? current.releaseTx;
+  const refundTx = status.refundTxHash ?? current.refundTx;
+  const lifecycle = status.lifecycle !== "unknown" ? status.lifecycle : current.lifecycle;
+
+  let state: FundingState = current.state;
+  if (SUCCESS_LIFECYCLE_VALUES.has(status.lifecycle) && releaseTx && current.state === "SUBMITTED") {
+    state = "CONFIRMED";
+  } else if (REFUND_LIFECYCLE_VALUES.has(status.lifecycle) && refundTx) {
+    state = "REFUNDED";
+  }
+
+  return { lifecycle, releaseTx, refundTx, state };
+}
+
+function isUnchanged(current: ReconciliationRecord, patch: ReconciledPatch): boolean {
+  return (
+    patch.lifecycle === current.lifecycle &&
+    patch.releaseTx === current.releaseTx &&
+    patch.refundTx === current.refundTx &&
+    patch.state === current.state
+  );
+}
+
+/**
+ * Opportunistically merges Rooster's own offer-outcome fields (lifecycle,
+ * releaseTx, refundTx) into the matching reconciliation record, and
+ * transitions the ledger's FundingState (SUBMITTED -> CONFIRMED on a
+ * successful release, or -> REFUNDED on a refund). `state` here tracks OUR
+ * funding tx only — this is a distinct concept from Rooster's own
+ * `lifecycle`, which is merged in alongside it, not folded into the same
+ * enum.
+ *
+ * No-ops entirely if no record exists for this offerId — an offer never
+ * funded through this app must never gain a ledger entry merely because its
+ * live status was checked. Safe to call on every poll/status-refresh: skips
+ * the write when nothing would actually change, and never downgrades a
+ * previously observed value (a missing field on this call falls back to
+ * what was already recorded).
+ */
+export async function reconcileFromStatus(
+  offerId: string,
+  status: Pick<OfferStatus, "lifecycle" | "releaseTxHash" | "refundTxHash">,
+): Promise<ReconciliationRecord | undefined> {
+  const existing = await getRecordByOfferId(offerId);
+  if (!existing) return undefined;
+
+  if (isUnchanged(existing, computeReconciledPatch(existing, status))) {
+    return existing;
+  }
+
+  return store().update(existing.idempotencyKey, (current) => {
+    const base = current ?? existing;
+    const patch = computeReconciledPatch(base, status);
+    if (isUnchanged(base, patch)) return base;
+    return { ...base, ...patch, updatedAt: new Date().toISOString() };
   });
 }
 
