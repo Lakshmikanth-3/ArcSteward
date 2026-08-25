@@ -287,7 +287,11 @@ export default function DashboardPage() {
 
           {/* PolicyCap Swarm */}
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(280px, 1fr))", gap: "1rem" }}>
-            {policy?.policies && policy.policies.length > 0 ? (
+            {policy === null && !policyErr ? (
+              <div className="glass-panel edge-light fade-up-2" style={{ borderRadius: "16px", padding: "1.5rem", gridColumn: "1 / -1" }}>
+                <div style={{ color: "var(--outline)" }}>Loading Agents...</div>
+              </div>
+            ) : policy?.policies && policy.policies.length > 0 ? (
               policy.policies.map((pol, idx) => {
               const pSpendPct = pct(pol.currentSpend, pol.maxSpend);
               const pMaxSui = mistToSui(BigInt(pol.maxSpend));
@@ -384,7 +388,7 @@ export default function DashboardPage() {
             })
           ) : (
             <div className="glass-panel edge-light fade-up-2" style={{ borderRadius: "16px", padding: "1.5rem", gridColumn: "1 / -1" }}>
-              <div style={{ color: "var(--outline)" }}>Loading Agents...</div>
+              <div style={{ color: "var(--outline)" }}>No agents found. Provision one to see it here.</div>
             </div>
           )}
           </div>
