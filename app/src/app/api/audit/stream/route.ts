@@ -36,7 +36,14 @@ export async function GET(req: NextRequest) {
       // Send a heartbeat immediately so the browser marks the connection open
       send({ type: "connected", ts: Date.now() });
 
-      let cursor: string | null = null;
+      // A separate cursor per event type — gRPC's cursor is opaque to a
+      // single listEvents(filter) query, so a cursor from one event type's
+      // query isn't valid to resume another type's query with.
+      const cursors: Record<string, string | null> = {
+        [EVENT_TYPE]: null,
+        [POLICY_MINTED_TYPE]: null,
+        [POLICY_REVOKED_TYPE]: null,
+      };
       let running = true;
 
       req.signal.addEventListener("abort", () => {
@@ -56,23 +63,23 @@ export async function GET(req: NextRequest) {
             POLICY_MINTED_TYPE,
             POLICY_REVOKED_TYPE,
           ]) {
-            const result = await suiClient.queryEvents({
-              query: { MoveEventType: eventType },
-              cursor: cursor ? { txDigest: cursor, eventSeq: "0" } : null,
+            const result = await suiClient.core.listEvents({
+              filter: { eventType },
+              after: cursors[eventType],
               limit: 20,
               order: "ascending",
             });
 
-            for (const evt of result.data) {
+            for (const evt of result.events) {
               send({
                 type: "event",
-                eventType: evt.type,
-                txDigest: evt.id.txDigest,
-                timestampMs: evt.timestampMs,
-                parsedJson: evt.parsedJson,
+                eventType: evt.eventType,
+                txDigest: evt.transactionDigest,
+                checkpoint: evt.checkpoint,
+                parsedJson: evt.json,
               });
-              cursor = evt.id.txDigest;
             }
+            if (result.endCursor) cursors[eventType] = result.endCursor;
           }
         } catch (err) {
           send({ type: "error", message: String(err) });

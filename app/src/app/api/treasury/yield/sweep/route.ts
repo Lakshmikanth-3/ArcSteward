@@ -13,6 +13,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Transaction } from "@mysten/sui/transactions";
 import { suiClient, PACKAGE_ID, TREASURY_ID, POLICY_CAP_ID } from "@/lib/sui-client";
 import { getAgentKeypair } from "@/lib/agent-keypair";
+import { fetchTreasury } from "@/lib/policy-reader";
 
 export async function POST(req: NextRequest) {
   try {
@@ -21,12 +22,8 @@ export async function POST(req: NextRequest) {
     };
 
     // Fetch current treasury balance
-    const treasuryObj = await suiClient.getObject({
-      id: TREASURY_ID,
-      options: { showContent: true },
-    });
-    const content = treasuryObj.data?.content as any;
-    const balanceMist = BigInt(content?.fields?.balance ?? 0);
+    const treasury = await fetchTreasury();
+    const balanceMist = treasury.balanceMist;
 
     const RESERVE_MIST = 10_000_000n; // 0.01 SUI kept for gas
     const sweepMist = body.idleAmountMist
@@ -58,13 +55,14 @@ export async function POST(req: NextRequest) {
     });
 
     const keypair = getAgentKeypair();
-    const result = await suiClient.signAndExecuteTransaction({
+    const raw = await suiClient.signAndExecuteTransaction({
       signer: keypair,
       transaction: tx,
-      options: { showEffects: true, showEvents: true },
+      include: { effects: true, events: true },
     });
+    const result = raw.$kind === "Transaction" ? raw.Transaction : raw.FailedTransaction;
 
-    if (result.effects?.status?.status !== "success") {
+    if (!result.status.success) {
       return NextResponse.json(
         {
           ok: false,
@@ -76,7 +74,7 @@ export async function POST(req: NextRequest) {
     }
 
     const sweepEvent = result.events?.find((e) =>
-      e.type?.includes("AgentActionEvent")
+      e.eventType?.includes("AgentActionEvent")
     );
 
     return NextResponse.json({
@@ -84,7 +82,7 @@ export async function POST(req: NextRequest) {
       digest: result.digest,
       sweep_mist: sweepMist.toString(),
       sweep_sui: (Number(sweepMist) / 1e9).toFixed(9),
-      event: sweepEvent?.parsedJson ?? null,
+      event: sweepEvent?.json ?? null,
       note: "Idle treasury funds marked for Scallop yield sweep.",
     });
   } catch (err: unknown) {

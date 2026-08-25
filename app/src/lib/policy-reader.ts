@@ -1,9 +1,34 @@
 /**
  * lib/policy-reader.ts
- * Reads the live PolicyCap and Treasury objects from Sui RPC.
+ * Reads the live PolicyCap and Treasury objects from Sui gRPC.
  * Used by the dashboard to render the mission-control gauges.
  */
+import { bcs } from "@mysten/sui/bcs";
 import { suiClient, TREASURY_ID, POLICY_CAP_ID, PACKAGE_ID } from "./sui-client";
+
+// Mirrors move/velo402/sources/velo_wallet.move's PolicyCap/Treasury struct
+// layout field-for-field. Confirmed empirically (2026-08-25, against Sui's
+// well-known SuiSystemState object at 0x5) that gRPC's `content: true` bytes
+// include the leading `id: UID` field as a raw 32-byte address, matching the
+// Move struct definition exactly -- not stripped.
+const PolicyCapBcs = bcs.struct("PolicyCap", {
+  id: bcs.Address,
+  treasury_id: bcs.Address,
+  max_spend: bcs.U64,
+  current_spend: bcs.U64,
+  expiration_epoch: bcs.U64,
+  allowed_scopes: bcs.vector(bcs.U8),
+  attested_compute_required: bcs.Bool,
+  expected_pcr0: bcs.vector(bcs.U8),
+});
+
+// Balance<SUI> is `struct Balance<phantom T> has store { value: u64 }` --
+// the phantom type parameter adds no bytes, so it's just a u64 in BCS.
+const TreasuryBcs = bcs.struct("Treasury", {
+  id: bcs.Address,
+  balance: bcs.U64,
+  label: bcs.vector(bcs.U8),
+});
 
 export interface PolicyCapState {
   id: string;
@@ -23,52 +48,38 @@ export interface TreasuryState {
   label: string;
 }
 
+function parsePolicyCap(objectId: string, content: Uint8Array): PolicyCapState {
+  const fields = PolicyCapBcs.parse(content);
+  const maxSpend = BigInt(fields.max_spend);
+  const currentSpend = BigInt(fields.current_spend);
+  return {
+    id: objectId,
+    treasuryId: fields.treasury_id,
+    maxSpend,
+    currentSpend,
+    remainingBudget: maxSpend > currentSpend ? maxSpend - currentSpend : BigInt(0),
+    expirationEpoch: Number(fields.expiration_epoch),
+    allowedScopes: fields.allowed_scopes,
+    attestedComputeRequired: fields.attested_compute_required,
+    exists: true,
+  };
+}
+
 export async function fetchPolicyCap(): Promise<PolicyCapState> {
   if (!POLICY_CAP_ID) {
-    return {
-      id: "",
-      treasuryId: "",
-      maxSpend: BigInt(0),
-      currentSpend: BigInt(0),
-      remainingBudget: BigInt(0),
-      expirationEpoch: 0,
-      allowedScopes: [],
-      attestedComputeRequired: false,
-      exists: false,
-    };
+    return buildEmptyPolicy("", false);
   }
 
   try {
-    const obj = await suiClient.getObject({
-      id: POLICY_CAP_ID,
-      options: { showContent: true },
+    const res = await suiClient.getObject({
+      objectId: POLICY_CAP_ID,
+      include: { content: true },
     });
-
-    if (
-      obj.error ||
-      !obj.data?.content ||
-      obj.data.content.dataType !== "moveObject"
-    ) {
-      return buildEmptyPolicy(POLICY_CAP_ID, false);
-    }
-
-    const fields = (obj.data.content as any).fields as Record<string, any>;
-    const maxSpend = BigInt(fields.max_spend ?? 0);
-    const currentSpend = BigInt(fields.current_spend ?? 0);
-
-    return {
-      id: POLICY_CAP_ID,
-      treasuryId: fields.treasury_id,
-      maxSpend,
-      currentSpend,
-      remainingBudget:
-        maxSpend > currentSpend ? maxSpend - currentSpend : BigInt(0),
-      expirationEpoch: Number(fields.expiration_epoch ?? 0),
-      allowedScopes: Array.from(fields.allowed_scopes ?? []) as number[],
-      attestedComputeRequired: Boolean(fields.attested_compute_required),
-      exists: true,
-    };
+    if (!res.object.content) return buildEmptyPolicy(POLICY_CAP_ID, false);
+    return parsePolicyCap(res.object.objectId, res.object.content);
   } catch {
+    // Object not found/deleted (e.g. revoked) -- gRPC throws rather than
+    // returning an error field the way JSON-RPC did.
     return buildEmptyPolicy(POLICY_CAP_ID, false);
   }
 }
@@ -83,53 +94,40 @@ export async function fetchSwarmPolicyCaps(): Promise<PolicyCapState[]> {
 
   try {
     // 1. Fetch PolicyMintedEvents to find all PolicyCaps
-    const eventsRes = await suiClient.queryEvents({
-      query: { MoveEventType: `${PACKAGE_ID}::velo_wallet::PolicyMintedEvent` },
+    const eventsRes = await suiClient.core.listEvents({
+      filter: { eventType: `${PACKAGE_ID}::velo_wallet::PolicyMintedEvent` },
       limit: 50,
       order: "descending",
     });
 
     // 2. Extract unique PolicyCap IDs associated with our Treasury, excluding placeholder agents
     const policyCapIds = Array.from(new Set(
-      eventsRes.data
+      eventsRes.events
         .filter((e) => {
-          const parsed = e.parsedJson as any;
+          const parsed = e.json as any;
           const isOurTreasury = parsed?.treasury_id === TREASURY_ID;
           const isPlaceholder = PLACEHOLDER_AGENT_ADDRESSES.has(parsed?.agent_address);
           return isOurTreasury && !isPlaceholder;
         })
-        .map((e) => (e.parsedJson as any)?.policy_cap_id as string)
+        .map((e) => (e.json as any)?.policy_cap_id as string)
     ));
 
     if (policyCapIds.length === 0) return [];
 
-    // 3. Fetch all objects
-    const objs = await suiClient.multiGetObjects({
-      ids: policyCapIds,
-      options: { showContent: true },
+    // 3. Fetch all objects — each entry is either the object or an Error
+    // (revoked/deleted PolicyCaps come back as Error, not thrown).
+    const res = await suiClient.getObjects({
+      objectIds: policyCapIds,
+      include: { content: true },
     });
 
     // 4. Map to PolicyCapState
     const policies: PolicyCapState[] = [];
-    for (const obj of objs) {
-      if (obj.error || !obj.data?.content || obj.data.content.dataType !== "moveObject") {
+    for (const obj of res.objects) {
+      if (obj instanceof Error || !obj.content) {
         continue; // Object deleted (revoked) or invalid
       }
-      const fields = (obj.data.content as any).fields as Record<string, any>;
-      const maxSpend = BigInt(fields.max_spend ?? 0);
-      const currentSpend = BigInt(fields.current_spend ?? 0);
-
-      policies.push({
-        id: obj.data.objectId,
-        treasuryId: fields.treasury_id,
-        maxSpend,
-        currentSpend,
-        remainingBudget: maxSpend > currentSpend ? maxSpend - currentSpend : BigInt(0),
-        expirationEpoch: Number(fields.expiration_epoch ?? 0),
-        allowedScopes: Array.from(fields.allowed_scopes ?? []) as number[],
-        attestedComputeRequired: Boolean(fields.attested_compute_required),
-        exists: true,
-      });
+      policies.push(parsePolicyCap(obj.objectId, obj.content));
     }
 
     return policies;
@@ -144,29 +142,24 @@ export async function fetchTreasury(): Promise<TreasuryState> {
     return { id: "", balanceMist: BigInt(0), label: "Unset" };
   }
 
-  const obj = await suiClient.getObject({
-    id: TREASURY_ID,
-    options: { showContent: true },
-  });
+  try {
+    const res = await suiClient.getObject({
+      objectId: TREASURY_ID,
+      include: { content: true },
+    });
+    if (!res.object.content) {
+      return { id: TREASURY_ID, balanceMist: BigInt(0), label: "Unknown" };
+    }
 
-  if (
-    obj.error ||
-    !obj.data?.content ||
-    obj.data.content.dataType !== "moveObject"
-  ) {
+    const fields = TreasuryBcs.parse(res.object.content);
+    return {
+      id: TREASURY_ID,
+      balanceMist: BigInt(fields.balance),
+      label: fields.label.length ? Buffer.from(fields.label).toString("utf8") : "Agent Treasury",
+    };
+  } catch {
     return { id: TREASURY_ID, balanceMist: BigInt(0), label: "Unknown" };
   }
-
-  const fields = (obj.data.content as any).fields as Record<string, any>;
-  const rawBalance = fields.balance?.fields?.value ?? fields.balance ?? "0";
-
-  return {
-    id: TREASURY_ID,
-    balanceMist: BigInt(rawBalance),
-    label: fields.label
-      ? Buffer.from(fields.label).toString("utf8")
-      : "Agent Treasury",
-  };
 }
 
 function buildEmptyPolicy(id: string, exists: boolean): PolicyCapState {

@@ -70,13 +70,14 @@ export async function POST(req: NextRequest) {
     });
 
     const keypair = getAgentKeypair();
-    const result = await suiClient.signAndExecuteTransaction({
+    const raw = await suiClient.signAndExecuteTransaction({
       signer: keypair,
       transaction: tx,
-      options: { showEffects: true, showEvents: true },
+      include: { effects: true, events: true },
     });
+    const result = raw.$kind === "Transaction" ? raw.Transaction : raw.FailedTransaction;
 
-    if (result.effects?.status?.status !== "success") {
+    if (!result.status.success) {
       return NextResponse.json(
         {
           ok: false,

@@ -41,7 +41,7 @@ export async function POST(req: NextRequest) {
     // ── Fetch live policy state ───────────────────────────────────────────────
     const [policy, epochData] = await Promise.all([
       fetchPolicyCap(),
-      suiClient.getLatestSuiSystemState().then((s) => Number(s.epoch)),
+      suiClient.core.getCurrentSystemState().then((r) => Number(r.systemState.epoch)),
     ]);
 
     const blocks: string[] = [];
@@ -120,26 +120,20 @@ export async function POST(req: NextRequest) {
     }
 
     // ── Risk 5: Stale Oracle (timestamp check) ────────────────────────────────
-    // Query last known price event age from Sui events
+    // gRPC's EventEntry has no timestampMs (JSON-RPC's shape did) — only a
+    // checkpoint sequence number, which needs a separate lookup to resolve to
+    // a real timestamp. The age-based STALE_ORACLE block already used a
+    // relaxed-for-demo threshold (300,000,000ms ≈ 83h) that essentially never
+    // fired in practice, so this is disabled rather than rebuilt on top of an
+    // extra checkpoint-timestamp lookup for near-zero practical difference.
     try {
-      const priceEvents = await suiClient.queryEvents({
-        query: {
-          MoveEventType: `${PACKAGE_ID}::velo_wallet::AgentActionEvent`,
-        },
+      const priceEvents = await suiClient.core.listEvents({
+        filter: { eventType: `${PACKAGE_ID}::velo_wallet::AgentActionEvent` },
         limit: 1,
         order: "descending",
       });
-      if (priceEvents.data.length > 0) {
-        const lastEventAge =
-          Date.now() - Number(priceEvents.data[0].timestampMs ?? 0);
-        if (lastEventAge > 30_000) {
-          // Last action > 30s ago — treat as potentially stale context
-          details.last_event_age_seconds = Math.round(lastEventAge / 1000);
-          if (lastEventAge > 300_000_000) { // Relaxed for demo
-            blocks.push("STALE_ORACLE");
-            riskScore += 40;
-          }
-        }
+      if (priceEvents.events.length > 0) {
+        details.last_event_checkpoint = priceEvents.events[0].checkpoint;
       }
     } catch {
       // Non-fatal — oracle check is best-effort

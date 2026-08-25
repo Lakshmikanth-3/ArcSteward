@@ -133,7 +133,7 @@ export async function POST(req: NextRequest) {
     // ── Step 3: Fetch policy for preview data ─────────────────────────────────
     const [policy, epochData] = await Promise.all([
       fetchPolicyCap(),
-      suiClient.getLatestSuiSystemState().then((s) => Number(s.epoch)),
+      suiClient.core.getCurrentSystemState().then((r) => Number(r.systemState.epoch)),
     ]);
 
     const remaining = Number(policy.remainingBudget);

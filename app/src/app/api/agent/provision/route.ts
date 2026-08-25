@@ -58,10 +58,18 @@ export async function POST(req: NextRequest) {
 
     // Sign and execute the transaction directly using the backend key
     const kp = getAgentKeypair();
-    const result = await suiClient.signAndExecuteTransaction({
+    const raw = await suiClient.signAndExecuteTransaction({
       transaction: tx,
       signer: kp,
     });
+    const result = raw.$kind === "Transaction" ? raw.Transaction : raw.FailedTransaction;
+
+    if (!result.status.success) {
+      return NextResponse.json(
+        { error: "mint_policy transaction failed on-chain.", digest: result.digest },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({
       ok: true,

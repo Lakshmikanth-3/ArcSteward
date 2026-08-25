@@ -34,10 +34,18 @@ export async function POST(req: NextRequest) {
 
     const tx = buildRevokePolicyTx({ ownerCapId, policyCapId });
     const kp = getAgentKeypair();
-    const result = await suiClient.signAndExecuteTransaction({
+    const raw = await suiClient.signAndExecuteTransaction({
       transaction: tx,
       signer: kp,
     });
+    const result = raw.$kind === "Transaction" ? raw.Transaction : raw.FailedTransaction;
+
+    if (!result.status.success) {
+      return NextResponse.json(
+        { error: "revoke_policy transaction failed on-chain.", digest: result.digest },
+        { status: 500 },
+      );
+    }
 
     return NextResponse.json({
       ok: true,

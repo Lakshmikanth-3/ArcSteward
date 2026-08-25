@@ -21,17 +21,17 @@ async function main() {
   console.log('Minting new PolicyCap for existing Treasury:', TREASURY_ID);
 
   // We need the OwnerCap that the user owns
-  const res = await client.getOwnedObjects({
+  const res = await client.listOwnedObjects({
     owner: keypair.toSuiAddress(),
-    filter: { StructType: `${PACKAGE_ID}::velo_wallet::OwnerCap` },
-    options: { showContent: true },
+    type: `${PACKAGE_ID}::velo_wallet::OwnerCap`,
+    include: { json: true },
   });
 
-  const ownerCapObj = res.data.find(
-    (obj: any) => obj.data?.content?.fields?.treasury_id === TREASURY_ID
+  const ownerCapObj = res.objects.find(
+    (obj) => (obj.json as any)?.treasury_id === TREASURY_ID
   );
 
-  const OWNER_CAP_ID = ownerCapObj?.data?.objectId;
+  const OWNER_CAP_ID = ownerCapObj?.objectId;
   if (!OWNER_CAP_ID) {
     console.error('Could not find OwnerCap in wallet');
     return;
@@ -52,21 +52,24 @@ async function main() {
     ],
   });
 
-  const r2 = await client.signAndExecuteTransaction({
+  const raw = await client.signAndExecuteTransaction({
     signer: keypair,
     transaction: tx2,
-    options: { showEffects: true, showObjectChanges: true },
+    include: { effects: true, objectTypes: true },
   });
+  const r2 = raw.$kind === 'Transaction' ? raw.Transaction : raw.FailedTransaction;
 
-  if (r2.effects?.status?.status !== 'success') {
-    console.error('❌ mint_policy failed:', JSON.stringify(r2.effects?.status, null, 2));
+  if (!r2.status.success) {
+    console.error('❌ mint_policy failed:', JSON.stringify(r2.status, null, 2));
     return;
   }
 
-  const policyObj = r2.objectChanges?.find(
-    (c: any) => c.type === 'created' && c.objectType?.includes('PolicyCap')
-  ) as any;
-  const POLICY_ID = policyObj?.objectId;
+  // No direct "objectChanges" equivalent — cross-reference effects.changedObjects
+  // (which has idOperation: 'Created') against objectTypes (object ID -> type).
+  const createdId = r2.effects?.changedObjects.find(
+    (c) => c.idOperation === 'Created' && r2.objectTypes?.[c.objectId]?.includes('PolicyCap')
+  )?.objectId;
+  const POLICY_ID = createdId;
   console.log('✅ New PolicyCap:', POLICY_ID, '| Digest:', r2.digest);
   console.log(`\nUpdate your .env:\nNEXT_PUBLIC_POLICY_CAP_ID=${POLICY_ID}`);
 }

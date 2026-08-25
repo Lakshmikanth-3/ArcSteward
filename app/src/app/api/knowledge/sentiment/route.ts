@@ -72,11 +72,12 @@ export async function GET(req: NextRequest) {
     // Retry loop with exponential backoff to handle RPC indexing delays
     for (let i = 0; i < 4; i++) {
       try {
-        tx = await suiClient.waitForTransaction({
+        const raw = await suiClient.waitForTransaction({
           digest,
-          options: { showEvents: true },
+          include: { events: true },
           timeout: 3000, // 3 second timeout per attempt
         });
+        tx = raw.$kind === "Transaction" ? raw.Transaction : raw.FailedTransaction;
         break; // Success
       } catch (err) {
         lastErr = err;
@@ -93,9 +94,9 @@ export async function GET(req: NextRequest) {
     // action_type is emitted as vector<u8> in Move; the RPC may return it as
     // an array of byte numbers OR as a pre-decoded string depending on SDK version.
     const agentActionEvent = tx.events?.find((e) => {
-      if (e.type !== `${PACKAGE_ID}::velo_wallet::AgentActionEvent`)
+      if (e.eventType !== `${PACKAGE_ID}::velo_wallet::AgentActionEvent`)
         return false;
-      const raw = (e.parsedJson as any)?.action_type;
+      const raw = (e.json as any)?.action_type;
       // Decode byte array → string if needed
       const actionStr = Array.isArray(raw)
         ? String.fromCharCode(...raw)
@@ -110,7 +111,7 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const paid = BigInt((agentActionEvent.parsedJson as any)?.amount ?? 0);
+    const paid = BigInt((agentActionEvent.json as any)?.amount ?? 0);
     if (paid < KNOWLEDGE_PRICE_MIST) {
       return NextResponse.json(
         {

@@ -12,7 +12,7 @@ export async function GET() {
       fetchPolicyCap(),
       fetchSwarmPolicyCaps(),
       fetchTreasury(),
-      suiClient.getLatestSuiSystemState().then((s) => Number(s.epoch)),
+      suiClient.core.getCurrentSystemState().then((r) => Number(r.systemState.epoch)),
     ]);
 
     const epochsRemaining = Math.max(0, policy.expirationEpoch - epoch);

@@ -35,7 +35,7 @@ export default function GlobalStatsTicker() {
       <div>TOTAL AGENTS: <span style={{ color: 'var(--primary)' }}>{stats.unique_agents}</span></div>
       <div>TOTAL TX: <span style={{ color: 'var(--primary)' }}>{stats.total_transactions}</span></div>
       <div>VOL: <span style={{ color: 'var(--primary)' }}>{stats.total_sui_paid} SUI</span></div>
-      <div>LAST ACTION: <span style={{ color: 'var(--primary)' }}>{stats.last_action_seconds_ago}s ago</span></div>
+      <div>LAST ACTION: <span style={{ color: 'var(--primary)' }}>{stats.last_action_seconds_ago != null ? `${stats.last_action_seconds_ago}s ago` : '—'}</span></div>
     </div>
   );
 }

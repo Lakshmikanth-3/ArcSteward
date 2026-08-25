@@ -1,4 +1,4 @@
-import { suiClient } from '@/lib/sui-client';
+import { fetchTreasury } from '@/lib/policy-reader';
 
 // Pyth SUI/USD feed (same as Guardian)
 const PYTH_SUI_USD_ID = "23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744";
@@ -31,14 +31,15 @@ async function fetchScallopData(): Promise<{ apy: number; exchangeRate: number }
 
 export async function GET() {
   try {
-    const treasury = await suiClient.getObject({
-      id: process.env.NEXT_PUBLIC_TREASURY_ID!,
-      options: { showContent: true },
-    });
-    
-    const fields = (treasury.data?.content as any)?.fields;
-    const principalMist = BigInt(fields?.balance ?? 0);
-    const yieldPositionMist = BigInt(fields?.yield_position?.fields?.balance?.fields?.value ?? 0);
+    const treasury = await fetchTreasury();
+    const principalMist = treasury.balanceMist;
+    // The Move Treasury struct (move/velo402/sources/velo_wallet.move) has no
+    // yield_position field -- sweep_idle_to_yield is a testnet stub that
+    // transfers back to the agent rather than tracking a real Scallop
+    // position (see its comment: "avoid broken Scallop testnet
+    // dependencies"). This was already effectively 0 under the old JSON-RPC
+    // read too, since that field never existed on the deployed object.
+    const yieldPositionMist = BigInt(0);
 
     // Scallop exchange rate (sCoin → SUI)
     const scallopData = await fetchScallopData();

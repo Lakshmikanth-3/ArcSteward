@@ -1,6 +1,7 @@
 import { Transaction } from '@mysten/sui/transactions';
 import { Ed25519Keypair } from '@mysten/sui/keypairs/ed25519';
 import { suiClient, PACKAGE_ID, TREASURY_ID, POLICY_CAP_ID } from '../src/lib/sui-client';
+import { fetchTreasury } from '../src/lib/policy-reader';
 import { decodeSuiPrivateKey } from '@mysten/sui/cryptography';
 
 /**
@@ -29,14 +30,8 @@ async function main() {
   console.log(`Agent Address: ${keypair.toSuiAddress()}`);
 
   // Fetch Treasury balance to determine how much to sweep
-  const treasuryObj = await suiClient.getObject({
-    id: TREASURY_ID,
-    options: { showContent: true }
-  });
-  
-  const content = treasuryObj.data?.content as any;
-  const balanceStr = content?.fields?.balance || "0";
-  const treasuryBalance = BigInt(balanceStr);
+  const treasury = await fetchTreasury();
+  const treasuryBalance = treasury.balanceMist;
   console.log(`Current Treasury Balance: ${Number(treasuryBalance) / 1e9} SUI`);
 
   // Keep 0.01 SUI for gas, sweep the rest
@@ -70,16 +65,17 @@ async function main() {
   // The Move event proves the sweep intent; Scallop handles the actual sCoin minting.
 
   try {
-    const result = await suiClient.signAndExecuteTransaction({
+    const raw = await suiClient.signAndExecuteTransaction({
       signer: keypair,
       transaction: tx,
-      options: { showEffects: true, showEvents: true }
+      include: { effects: true, events: true }
     });
+    const result = raw.$kind === "Transaction" ? raw.Transaction : raw.FailedTransaction;
 
-    if (result.effects?.status?.status === "success") {
+    if (result.status.success) {
       console.log(`✅ Sweep successful! Digest: ${result.digest}`);
     } else {
-      console.error(`❌ Sweep failed on-chain:`, result.effects?.status);
+      console.error(`❌ Sweep failed on-chain:`, result.status);
     }
   } catch (error) {
     console.error("❌ Transaction execution failed:", error);
