@@ -5,17 +5,21 @@
  * capability (via a script or the operator-only /api/rooster/capabilities
  * route); the agent consumes it. Not agent self-service.
  */
-import { FileStore } from "./file-store";
+import { createStore, type Store } from "./store";
 import { CapabilityDeniedError, type RoosterCapability } from "./types";
 
 // Lazily constructed so tests can point ROOSTER_CAPABILITY_STORE_PATH at a
 // temp file before the first store operation, without needing dynamic import.
-let _store: FileStore<RoosterCapability> | null = null;
-function store(): FileStore<RoosterCapability> {
+// createStore() picks Supabase (serverless-safe) when configured, else this
+// same local FileStore fallback.
+let _store: Store<RoosterCapability> | null = null;
+function store(): Store<RoosterCapability> {
   if (!_store) {
-    _store = new FileStore<RoosterCapability>(
-      process.env.ROOSTER_CAPABILITY_STORE_PATH ?? ".data/rooster-capabilities.json",
-    );
+    _store = createStore<RoosterCapability>({
+      name: "rooster-capabilities",
+      filePathEnvVar: "ROOSTER_CAPABILITY_STORE_PATH",
+      defaultFilePath: ".data/rooster-capabilities.json",
+    });
   }
   return _store;
 }

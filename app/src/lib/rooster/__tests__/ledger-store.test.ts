@@ -9,6 +9,11 @@ process.env.ROOSTER_LEDGER_STORE_PATH = path.join(
   os.tmpdir(),
   `rooster-ledger-idempotency-test-${process.pid}-${Date.now()}.json`,
 );
+// Force the FileStore fallback regardless of what's in the ambient
+// environment (e.g. a developer's local .env with real Supabase
+// credentials) — this suite must stay fully offline.
+delete process.env.SUPABASE_URL;
+delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 import {
   computeIdempotencyKey,

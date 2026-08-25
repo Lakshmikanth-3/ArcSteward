@@ -7,18 +7,22 @@
  * which Rooster offer" must always be answerable from this store.
  */
 import { createHash } from "node:crypto";
-import { FileStore } from "./file-store";
+import { createStore, type Store } from "./store";
 import { REFUND_LIFECYCLE_VALUES, SUCCESS_LIFECYCLE_VALUES } from "./types";
 import type { FundingState, OfferStatus, ReconciliationRecord, RoosterCapability } from "./types";
 
 // Lazily constructed so tests can point ROOSTER_LEDGER_STORE_PATH at a temp
 // file before the first store operation, without needing dynamic import.
-let _store: FileStore<ReconciliationRecord> | null = null;
-function store(): FileStore<ReconciliationRecord> {
+// createStore() picks Supabase (serverless-safe) when configured, else this
+// same local FileStore fallback.
+let _store: Store<ReconciliationRecord> | null = null;
+function store(): Store<ReconciliationRecord> {
   if (!_store) {
-    _store = new FileStore<ReconciliationRecord>(
-      process.env.ROOSTER_LEDGER_STORE_PATH ?? ".data/rooster-ledger.json",
-    );
+    _store = createStore<ReconciliationRecord>({
+      name: "rooster-ledger",
+      filePathEnvVar: "ROOSTER_LEDGER_STORE_PATH",
+      defaultFilePath: ".data/rooster-ledger.json",
+    });
   }
   return _store;
 }

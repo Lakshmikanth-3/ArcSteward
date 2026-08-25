@@ -18,6 +18,9 @@ process.env.ROOSTER_LEDGER_STORE_PATH = path.join(
   os.tmpdir(),
   `rooster-ledger-fundroute-test-${process.pid}-${Date.now()}.json`,
 );
+// Force the FileStore fallback regardless of the ambient environment.
+delete process.env.SUPABASE_URL;
+delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 const FAKE_CONFIG = { baseUrl: "https://roosteragents.ai/agent-economy", apiKey: "rae_live_x", testMode: true };
 

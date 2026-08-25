@@ -13,3 +13,5 @@ walrus.exe
 # Rooster integration — local off-chain capability/reconciliation ledger
 app/.data/
 
+.vercel
+.env*.local

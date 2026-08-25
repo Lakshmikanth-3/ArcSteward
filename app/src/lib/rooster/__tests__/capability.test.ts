@@ -19,6 +19,9 @@ process.env.ROOSTER_LEDGER_STORE_PATH = path.join(
   os.tmpdir(),
   `rooster-ledger-test-${process.pid}-${Date.now()}.json`,
 );
+// Force the FileStore fallback regardless of the ambient environment.
+delete process.env.SUPABASE_URL;
+delete process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 let counter = 0;
 function uniqueAgent(): string {
