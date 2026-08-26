@@ -54,6 +54,16 @@ export interface FundParams {
   depositAddress: `0x${string}`;
   /** Actual escrow funding amount owed, in USD cents (price + marketplace fee). */
   amountCents: number;
+  /**
+   * The ERC-20 token contract to send to, read from Rooster's live funding
+   * response. Base Sepolia and Base mainnet USDC are DIFFERENT contract
+   * addresses (confirmed by Rooster 2026-08-26 — this exact gap reverted
+   * another founding agent's transfer). Falls back to the configured
+   * network default only if Rooster's response omits it.
+   */
+  tokenContract?: `0x${string}`;
+  /** ERC-20 decimals for tokenContract — falls back to USDC_DECIMALS (6) if omitted. */
+  tokenDecimals?: number;
 }
 
 export interface FundResult {
@@ -73,9 +83,9 @@ export interface SettlementAdapter {
   bridgeFromSui(amountMist: bigint): Promise<never>;
 }
 
-function centsToUsdcUnits(amountCents: number): bigint {
-  // amountCents is USD cents; USDC has 6 decimals.
-  return parseUnits((amountCents / 100).toFixed(6), USDC_DECIMALS);
+function centsToTokenUnits(amountCents: number, decimals: number): bigint {
+  // amountCents is USD cents.
+  return parseUnits((amountCents / 100).toFixed(decimals), decimals);
 }
 
 export class BaseSepoliaSettlementAdapter implements SettlementAdapter {
@@ -111,16 +121,23 @@ export class BaseSepoliaSettlementAdapter implements SettlementAdapter {
   }
 
   async fund(params: FundParams): Promise<FundResult> {
-    const amount = centsToUsdcUnits(params.amountCents);
+    // Prefer the token contract/decimals Rooster reports on the live funding
+    // response over the configured constant — Base Sepolia and Base mainnet
+    // USDC are different contract addresses, and this is per-offer, not
+    // per-deployment, information.
+    const tokenContract = params.tokenContract ?? this.usdcContract;
+    const tokenDecimals = params.tokenDecimals ?? USDC_DECIMALS;
+    const amount = centsToTokenUnits(params.amountCents, tokenDecimals);
 
     roosterLogger.info("Submitting Base settlement transfer", {
       offerId: params.offerId,
       network: this.network,
       amountCents: params.amountCents,
+      tokenContract,
     });
 
     const txHash = await this.walletClient.writeContract({
-      address: this.usdcContract,
+      address: tokenContract,
       abi: ERC20_TRANSFER_ABI,
       functionName: "transfer",
       args: [params.depositAddress, amount],

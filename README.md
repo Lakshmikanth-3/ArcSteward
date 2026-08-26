@@ -148,17 +148,19 @@ sequenceDiagram
 
 ## 🚀 Running Locally
 
+This project's package manager is **pnpm** (`pnpm-lock.yaml` is the tracked lockfile; Vercel's build uses pnpm exclusively). Running `npm install` instead generates a stray `package-lock.json` and leaves `pnpm-lock.yaml` stale, which breaks Vercel's `pnpm install --frozen-lockfile` build step.
+
 1. **Start the Next.js Mission Control Dashboard:**
 ```bash
 cd app
-npm install
-npm run dev
+pnpm install
+pnpm dev
 ```
 
 2. **Run the Autonomous Agent:**
 ```bash
 cd app
-npm run start:agent
+pnpm start:agent
 ```
 
 ---
@@ -232,13 +234,13 @@ See `app/.env.example` for the full, safe-to-commit list. Key ones:
 
 ```bash
 cd app
-npm install
+pnpm install
 # copy .env.example to .env — fill in ROOSTER_AGENT_KEY, EVM_SETTLEMENT_PRIVATE_KEY,
 # ROOSTER_OPERATOR_KEY, ROOSTER_MAX_CAPABILITY_CENTS
-npm test                      # offline unit tests — no network/chain calls
-npm run rooster:balance       # check the Base Sepolia settlement wallet's ETH/USDC
-npm run rooster:e2e           # live: submits a real sandbox offer, funds it, waits for release
-npm run rooster:refund-test   # live: submits a sandbox offer with sandboxOutcome: "refund"
+pnpm test                          # offline unit tests — no network/chain calls
+pnpm run rooster:balance           # check the Base Sepolia settlement wallet's ETH/USDC
+pnpm run rooster:e2e               # live: submits a real sandbox offer, funds it, waits for release
+pnpm run rooster:refund-test       # live: submits a sandbox offer with sandboxOutcome: "refund"
 ```
 
 ### 7. Live proof — Base Sepolia, both legs, on-chain
@@ -286,6 +288,8 @@ Three real bugs surfaced only by running this live traffic (not catchable by rea
 
 Rooster has no webhooks for this integration. `lib/rooster/offer-status-poller.ts`'s `waitForOfferStatus(offerId, { timeout, interval })` polls with bounded backoff, stops as soon as Rooster's own `terminal` flag reads `true` (see §16 below — `terminal` is authoritative, not re-derived from `state`/`escrowStatus`), or on timeout, and always preserves the last known status rather than throwing. Live-observed funding-watcher + release/refund latency is ~1.5–2.5 minutes after the on-chain transfer confirms — the e2e/refund-test scripts budget 210 seconds for this final poll accordingly.
 
+`RoosterClient.cancelOffer(offerId)` wraps Rooster's `POST /offer/{offerId}/cancel` (added 2026-08-26). Only valid up to and including `awaiting_funding` — Rooster returns 409 once escrow is funded, since a funded offer belongs to the creator too. Not called by any automated path in this codebase; it's an operator-invoked cleanup action for a stray unfunded offer.
+
 ### 10. Capability authorization
 
 Every funding attempt goes through `authorizeRoosterSpend()` (`lib/rooster/capability.ts`), which checks, in order: destination allow-listed → currency allow-listed → capability exists and isn't revoked → currency matches the capability's own scope → offer-id matches (if the capability is offer-specific) → not expired → within the spend ceiling (checked against the **real funding amount**, i.e. price + Rooster's 15% marketplace fee, not the raw offer price) → not already funded (one-time enforcement via the reconciliation ledger).
@@ -298,7 +302,7 @@ A capability is issued by the operator via `POST /api/rooster/capabilities` — 
 
 ### 12. Refund handling
 
-`sandboxOutcome: "refund"` forces the simulated post to fail, which triggers Rooster's real refund path — 100% of what was sent (offer + marketplace fee) returns to `agentWallet`, no cut taken. `npm run rooster:refund-test` runs this live and reconciles the result. Under real, non-sandbox offers, a refund can only be forced by an actual post that Rooster later judges unverifiable — not something this repo can trigger on demand.
+`sandboxOutcome: "refund"` forces the simulated post to fail, which triggers Rooster's real refund path — 100% of what was sent (offer + marketplace fee) returns to `agentWallet`, no cut taken. `pnpm run rooster:refund-test` runs this live and reconciles the result. Under real, non-sandbox offers, a refund can only be forced by an actual post that Rooster later judges unverifiable — not something this repo can trigger on demand.
 
 ### 13. Security
 
@@ -377,7 +381,9 @@ Rooster's `funding` object has shipped in three shapes so far, all confirmed liv
 | camelCase, decimal string | `depositAddress`, `amountUsdc` | Added alongside the snake_case shape, not a replacement. |
 | Integer cents | `amountUsdcCents` (e.g. `575`) | Takes precedence over a decimal string if both are present. |
 
-The canonical internal representation every caller sees is `{ depositAddress: string, amountCents: number, amountUsdc: string, currency, deadline? }`. Rules: an incoming cents field is used directly as an integer; a decimal string/number is rounded through cents exactly once (`Math.round(Number(x) * 100)`); `amountUsdc` is always **re-derived from those integer cents** (`(amountCents / 100).toFixed(2)`), never echoed back from a possibly-imprecise input string — no floating-point arithmetic ever touches the string representation of money. A malformed/empty `funding` object never throws; it resolves to an empty `depositAddress` and zero `amountCents` — `POST /api/rooster/offers/[offerId]/fund` is what actually rejects that (409, before any capability check or ledger write), not the parser. The full raw API response is always preserved on `OfferStatus.raw` for debugging/reconciliation regardless of how the typed fields parse.
+The canonical internal representation every caller sees is `{ depositAddress: string, amountCents: number, amountUsdc: string, currency, deadline?, tokenContract?, tokenDecimals?, explorer? }`. Rules: an incoming cents field is used directly as an integer; a decimal string/number is rounded through cents exactly once (`Math.round(Number(x) * 100)`); `amountUsdc` is always **re-derived from those integer cents** (`(amountCents / 100).toFixed(2)`), never echoed back from a possibly-imprecise input string — no floating-point arithmetic ever touches the string representation of money. A malformed/empty `funding` object never throws; it resolves to an empty `depositAddress` and zero `amountCents` — `POST /api/rooster/offers/[offerId]/fund` is what actually rejects that (409, before any capability check or ledger write), not the parser. The full raw API response is always preserved on `OfferStatus.raw` for debugging/reconciliation regardless of how the typed fields parse.
+
+**Token contract, read per-offer, never from a constant (added by Rooster 2026-08-26):** `funding.token_contract`/`tokenContract` and `token_decimals`/`tokenDecimals` identify the exact ERC-20 to send to. Base Sepolia USDC (`0x036CbD53842c5426634e7929541eC2318f3dCF7e`) and Base mainnet USDC (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) are **different contract addresses** — this bit another founding agent (a `balanceOf` revert from assuming the wrong constant). `settlement-adapter.ts`'s `fund()` now takes `tokenContract`/`tokenDecimals` from `FundParams` and prefers them over the configured network default, which is used only as a fallback if Rooster's response omits them. `POST /api/rooster/offers/[offerId]/fund` passes these straight through from the live `getOfferStatus()` response — never hardcoded.
 
 ### 18. `auto_refund_at` behavior
 

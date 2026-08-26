@@ -281,6 +281,84 @@ test("a malformed/empty funding object never throws — resolves to empty addres
   assert.equal(status.funding?.amountUsdc, "0.00");
 });
 
+// ─── token_contract / token_decimals parsing (added by Rooster 2026-08-26) ─
+
+test("parses funding.token_contract + funding.token_decimals (snake_case)", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      status: "awaiting_funding",
+      funding: {
+        depositAddress: "0xDEAD",
+        amountUsdcCents: 2875,
+        token_contract: "0x036CbD53842c5426634e7929541eC2318f3dCF7e",
+        token_decimals: 6,
+        explorer: "https://base-sepolia.blockscout.com/address/0xDEAD",
+      },
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.funding?.tokenContract, "0x036CbD53842c5426634e7929541eC2318f3dCF7e");
+  assert.equal(status.funding?.tokenDecimals, 6);
+  assert.equal(status.funding?.explorer, "https://base-sepolia.blockscout.com/address/0xDEAD");
+});
+
+test("parses funding.tokenContract + funding.tokenDecimals (camelCase)", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      status: "awaiting_funding",
+      funding: {
+        depositAddress: "0xDEAD",
+        amountUsdcCents: 2875,
+        tokenContract: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+        tokenDecimals: 6,
+      },
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.funding?.tokenContract, "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913");
+  assert.equal(status.funding?.tokenDecimals, 6);
+});
+
+test("funding.tokenContract is undefined, never invented, when Rooster's response omits it", async () => {
+  const fetchImpl = (async () =>
+    jsonResponse({
+      status: "awaiting_funding",
+      funding: { depositAddress: "0xDEAD", amountUsdcCents: 2875 },
+    })) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  const status = await client.getOfferStatus("offer_x");
+  assert.equal(status.funding?.tokenContract, undefined);
+  assert.equal(status.funding?.tokenDecimals, undefined);
+});
+
+// ─── cancelOffer ────────────────────────────────────────────────────────────
+
+test("cancelOffer posts to /offer/{id}/cancel with auth", async () => {
+  let captured: { url: string; init: RequestInit } | undefined;
+  const fetchImpl = (async (url: string, init: RequestInit) => {
+    captured = { url: String(url), init };
+    return jsonResponse({ ok: true });
+  }) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  await client.cancelOffer("offer_x");
+
+  assert.equal(captured!.url, "https://roosteragents.ai/agent-economy/offer/offer_x/cancel");
+  assert.equal(captured!.init.method, "POST");
+  const headers = captured!.init.headers as Record<string, string>;
+  assert.equal(headers.Authorization, "Bearer rae_live_SECRET123");
+});
+
+test("cancelOffer surfaces a 409 (already funded) as a RoosterApiError", async () => {
+  const fetchImpl = (async () => jsonResponse({ error: "already funded" }, 409)) as typeof fetch;
+  const client = new RoosterClient({ config: FAKE_CONFIG, fetchImpl, minIntervalMs: 0 });
+
+  await assert.rejects(() => client.cancelOffer("offer_x"), RoosterApiError);
+});
+
 // ─── auto_refund_at parsing ─────────────────────────────────────────────────
 
 test("parses auto_refund_at (snake_case) on delivered_awaiting_creator_wallet", async () => {

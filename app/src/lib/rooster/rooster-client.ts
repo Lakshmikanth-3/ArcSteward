@@ -19,7 +19,6 @@ import { roosterLogger } from "./logger";
 import {
   OFFER_LIFECYCLE_SET,
   RoosterApiError,
-  TERMINAL_LIFECYCLE_VALUES,
   TERMINAL_OFFER_STATES,
   type Creator,
   type Currency,
@@ -75,14 +74,21 @@ interface ParsedFunding {
   amountUsdc: string;
   currency: Currency;
   deadline?: string;
+  tokenContract?: `0x${string}`;
+  tokenDecimals?: number;
+  explorer?: string;
 }
 
 /**
  * Normalizes every funding-response shape Rooster is known to send into one
- * canonical representation. Confirmed live 2026-08-24/25:
+ * canonical representation. Confirmed live 2026-08-24/25/26:
  *   deposit_address / amount_usdc   — snake_case, amount as a decimal string ("5.75")
  *   depositAddress / amountUsdc     — camelCase, same decimal-string amount
  *   amountUsdcCents                 — integer cents (e.g. 575)
+ *   token_contract / tokenContract  — the ERC-20 to send to; DIFFERS between
+ *                                     Base Sepolia and Base mainnet USDC, so
+ *                                     this must always be read here, never
+ *                                     assumed from a fixed constant.
  * Amount math never touches floating point on the string itself — an
  * incoming cents field is used directly as an integer; an incoming decimal
  * string/number is rounded through cents once, and amountUsdc is always
@@ -104,12 +110,18 @@ function parseFunding(fundingRaw: Record<string, unknown>): ParsedFunding {
         ? Math.round(Number(usdField) * 100)
         : 0;
 
+  const tokenContractRaw = fundingRaw.token_contract ?? fundingRaw.tokenContract;
+  const tokenDecimalsRaw = fundingRaw.token_decimals ?? fundingRaw.tokenDecimals;
+
   return {
     depositAddress,
     amountCents,
     amountUsdc: (amountCents / 100).toFixed(2),
     currency: ((fundingRaw.currency as Currency | undefined) ?? "USDC") as Currency,
     deadline: fundingRaw.deadline as string | undefined,
+    tokenContract: typeof tokenContractRaw === "string" ? (tokenContractRaw as `0x${string}`) : undefined,
+    tokenDecimals: typeof tokenDecimalsRaw === "number" ? tokenDecimalsRaw : undefined,
+    explorer: typeof fundingRaw.explorer === "string" ? fundingRaw.explorer : undefined,
   };
 }
 
@@ -285,6 +297,17 @@ export class RoosterClient {
       );
     }
     return { offerId, raw: data };
+  }
+
+  /**
+   * Cancels an offer that hasn't been funded yet (added by Rooster 2026-08-26).
+   * Only valid up to and including `awaiting_funding` — Rooster returns 409
+   * once escrow is funded, by design, since a funded offer belongs to the
+   * creator too. Not called by any automated path in this codebase; this is
+   * an operator-invoked cleanup action.
+   */
+  async cancelOffer(offerId: string): Promise<void> {
+    await this.request<unknown>(`/offer/${encodeURIComponent(offerId)}/cancel`, { method: "POST" });
   }
 
   async getOfferStatus(offerId: string): Promise<OfferStatus> {

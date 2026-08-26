@@ -207,6 +207,18 @@ export interface OfferStatus {
     amountUsdc: string;
     currency: Currency;
     deadline?: string; // ISO timestamp, ~72h from acceptance
+    /**
+     * The ERC-20 token contract to send funds to — added by Rooster 2026-08-26.
+     * Base Sepolia USDC and Base mainnet USDC are DIFFERENT contract addresses;
+     * this MUST be read from here per-offer, never assumed from a fixed env
+     * constant, or a mainnet transfer reverts (confirmed: bit another founding
+     * agent). Passthrough only — undefined if Rooster's response omits it.
+     */
+    tokenContract?: `0x${string}`;
+    /** ERC-20 decimals for tokenContract (USDC is 6) — passthrough, never assumed. */
+    tokenDecimals?: number;
+    /** Block explorer URL for this deposit address — informational only. */
+    explorer?: string;
   };
   counterPriceCents?: number;
   /** Present once Rooster has released escrow to the creator (real offers only). */

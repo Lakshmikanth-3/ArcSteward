@@ -137,6 +137,8 @@ export async function handleFundRequest(
       offerId,
       depositAddress: status.funding.depositAddress as `0x${string}`,
       amountCents: status.funding.amountCents,
+      tokenContract: status.funding.tokenContract,
+      tokenDecimals: status.funding.tokenDecimals,
     });
   } catch (fundErr) {
     // Pre-broadcast failure — no txHash was ever obtained, this is a
