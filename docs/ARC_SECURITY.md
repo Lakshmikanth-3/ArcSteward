@@ -1,6 +1,6 @@
 # Arc security model
 
-Experimental, unaudited prototype. Solidity constraints are authoritative; the frontend and agent simulations improve error handling but confer no authority.
+Solidity constraints are authoritative. The frontend and SDK pre-check each call against the live contract (eth_call) to give clear errors before signing, but grant no authority. A randomized attacker test (`app/scripts/arc-adversarial.test.mjs`) and live testnet runs verify the rules below.
 
 Owner is immutable. Only owner can deposit through the deposit method, grant/revoke or withdraw. Any account can send USDC directly; direct transfers increase the authoritative ERC-20 balance but do not emit `Funded`. Native sends through ordinary calldata are rejected; forced native balance can still appear in Arc's shared ERC-20 view. No double-counting or yield strategy exists in the Arc implementation.
 
@@ -10,8 +10,7 @@ The contract checks authorization, expiry (`timestamp >= expiry` rejected), allo
 
 Risks: owner key compromise gives full control; agent compromise can spend its authorized remaining budget to permitted recipients. Prompt injection is bounded financially but cannot establish service quality or prevent an agent from wasting its valid budget. USDC interface/admin behavior and chain RPC remain external dependencies. A spoofed website, wallet provider or RPC can mislead users; verify explorer receipts independently. Revocation is effective only after chain inclusion, and cannot reverse completed payments. There is no owner recovery, multisig provisioning, account abstraction, off-chain invoice attestation or merchant delivery guarantee. Timestamp-based expiry uses chain time.
 
-Use separate keys for Arc and existing Sui/Base integrations. Arc signing runs in the wallet or dedicated server CLI; no new remote signing API accepts arbitrary requests. Keys are absent from browser code and public env names. Local testing uses disposable generated accounts. Never expose a funded local Ganache service publicly.
+Use dedicated keys for the Arc owner and agent. Arc signing runs in the wallet or dedicated server CLI; no new remote signing API accepts arbitrary requests. Keys are absent from browser code and public env names. Local testing uses disposable generated accounts. Never expose a funded local Ganache service publicly.
 
 The UI's generic vault address input validates token and contract reads but is not a source-verification tool; only use vaults created by a independently verified project factory. The readiness checker verifies a factory creation input and registered vault, but current UI functionality and program acceptance remain manual checks. Source verification and an independent audit have not been completed.
 
-Known inherited risks are outside this migration: existing Sui APIs and Rooster authorization have their original controls. No Arc UI action invokes them. Historical PRD/FINAL_REPORT claims apply to Sui only and should not be treated as independent validation by this migration.

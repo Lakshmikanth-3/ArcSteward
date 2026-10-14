@@ -18,7 +18,7 @@ pnpm build
 pnpm dev
 ```
 
-Open `/arc`. The legacy Sui dashboard and Rooster remain separate routes. Configure `.env.local` for Next.js. CLI commands consume environment variables supplied by the shell, or use `pnpm exec tsx --env-file=.env scripts/arc-deploy.ts`. Never paste keys into a command argument, chat, browser field, screenshot or checked-in file. `.env` is ignored. `.env.example` contains only placeholders. Dedicated deployer, owner and agent accounts are recommended.
+Open `/arc`. Configure `.env.local` for Next.js. CLI commands consume environment variables supplied by the shell, or use `pnpm exec tsx --env-file=.env scripts/arc-deploy.ts`. Never paste keys into a command argument, chat, browser field, screenshot or checked-in file. `.env` is ignored. `.env.example` contains only placeholders. Dedicated deployer, owner and agent accounts are recommended.
 
 ## Network and units
 

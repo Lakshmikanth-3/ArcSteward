@@ -34,7 +34,7 @@ export class ArcAgent {
     const before = await this.state();
     const args = [address(recipient), usdcAmount(amount), paymentId] as const;
     if (!/^0x[0-9a-fA-F]{64}$/.test(paymentId) || /^0x0{64}$/.test(paymentId)) throw new Error('Nonzero bytes32 payment ID required');
-    // Simulation uses the actual signer; the deployed contract is authoritative.
+    // Pre-flight eth_call with the real signer against the deployed contract; the contract stays authoritative.
     const { request } = await this.publicClient.simulateContract({ account: this.account, address: this.vault, abi: vaultAbi, functionName: 'pay', args });
     const hash = await this.walletClient.writeContract(request);
     // Do not retry automatically on timeout: query this hash and usedPaymentIds first.

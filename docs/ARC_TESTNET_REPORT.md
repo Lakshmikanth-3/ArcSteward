@@ -51,7 +51,7 @@ Transactions were signed by dedicated server-side CLI signers. The in-app browse
 - `pnpm arc:test`: passed (8 contract test entries plus SDK and decimal tests).
 - `pnpm arc:test:ui`: passed after isolating its Next.js build directory so it can coexist with the user's running dev server.
 - TypeScript and scoped ESLint: passed.
-- Production build: passed; inherited Rooster dynamic-file tracing warning remains.
+- Production build: passed.
 - `pnpm arc:readiness --online --testnet`: independently confirmed deployment creation input matches current compiler output, registered vault, successful positive Paid event and public builder profile; correctly reports no mainnet eligibility.
 - `pnpm arc:readiness --online`: correctly reports missing mainnet factory/payment, public live URL and published current Arc source.
 
