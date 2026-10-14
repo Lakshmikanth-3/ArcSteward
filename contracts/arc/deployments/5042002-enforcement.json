@@ -1,0 +1,60 @@
+{
+  "chainId": 5042002,
+  "vault": "0x108273C1Db4865CE65644195aFAB844A834891C2",
+  "status": "PASS",
+  "results": [
+    {
+      "name": "revoked agent",
+      "result": "PASS: Unauthorized"
+    },
+    {
+      "name": "per-payment ceiling",
+      "result": "PASS: PaymentLimit"
+    },
+    {
+      "name": "recipient allowlist",
+      "result": "PASS: RecipientDenied"
+    },
+    {
+      "name": "unauthorized caller",
+      "result": "PASS: Unauthorized"
+    },
+    {
+      "name": "duplicate payment ID",
+      "result": "PASS: DuplicatePayment"
+    },
+    {
+      "name": "exhausted lifetime budget",
+      "result": "PASS: TotalLimit"
+    },
+    {
+      "name": "expired capability",
+      "result": "PASS: Expired"
+    },
+    {
+      "name": "revocation after reauthorization",
+      "result": "PASS: Unauthorized"
+    }
+  ],
+  "transactions": [
+    "0xb4a4408e3118210b0503103bb189abe47a86988923e00d80f852cc8382990f1f",
+    "0xf6f5f66cebe8cc75ddfd49c997527ee34081882714ca461d1708d1cf6f8f5e95",
+    "0xf5a283d61c7b7666c0cc91c10899aa0fdb76140584e8a71c5fc84c5cf4c1e1ac",
+    "0xc8d92bbf463dfc41a2c240580754b3aec9bd2ac845529413ec15c098b9afe8b1",
+    "0xe4255afc7ea6afb2a0d2b833b8352600f7e6fc343a4cba4645e5720462f52bf8",
+    "0xaaf6f75e776e808e5fcf37d58b372f92fb9de857bddd4031695bf5d93281acfb",
+    "0x0e0f095d44943a4638e6aa34ba64560fcee8fe6cb2c046db96f93ad25cdef9ed"
+  ],
+  "payment": {
+    "ok": true,
+    "hash": "0xc8d92bbf463dfc41a2c240580754b3aec9bd2ac845529413ec15c098b9afe8b1",
+    "blockNumber": "67184091",
+    "amountUnits": "10000",
+    "recipient": "0x816326154e067B3A69648432c4292C51827BbfB0",
+    "paymentId": "0x7c8aae2d9c7a1c6af3026d8ec4d7724f9c193ae1b05b0b5c1267db46f742bca2",
+    "remainingBudget": "0",
+    "balance": "10000",
+    "spentBefore": "20000"
+  },
+  "testedAt": "2026-10-14T15:59:03.169Z"
+}

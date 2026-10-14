@@ -3,6 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
+    "typecheck": "tsc --noEmit",
+    "arc:compile": "node scripts/arc-compile.mjs",
+    "arc:test:ui": "tsx --test scripts/arc-ui.test.ts",
+    "arc:testnet:setup": "tsx scripts/arc-testnet-setup.ts",
+    "arc:testnet:run": "tsx --env-file=.env.arc-testnet scripts/arc-testnet-run.ts",
+    "arc:testnet:enforcement": "tsx --env-file=.env.arc-testnet scripts/arc-testnet-enforcement.ts",
+    "arc:test": "node --test scripts/arc-contract.test.mjs && tsx --test src/lib/arc/config.test.ts scripts/arc-sdk.test.ts",
+    "arc:preflight": "tsx scripts/arc-deploy.ts",
+    "arc:deploy": "tsx scripts/arc-deploy.ts --broadcast",
+    "arc:smoke": "tsx scripts/arc-smoke.ts",
+    "arc:readiness": "tsx scripts/arc-readiness.ts",
+    "arc:agent": "tsx agent/arc-runner.ts",
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
@@ -30,6 +42,7 @@
     "viem": "^2.21.0"
   },
   "devDependencies": {
+    "@openzeppelin/contracts": "5.4.0",
     "@playwright/test": "^1.62.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -37,6 +50,8 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
+    "ganache": "7.9.2",
+    "solc": "0.8.30",
     "tailwindcss": "^4",
     "tsx": "^4.19.2",
     "typescript": "^5"

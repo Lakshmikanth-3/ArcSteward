@@ -1,0 +1,8 @@
+{
+  "chainId": 5042002,
+  "factory": "0xfbfb323cbc2d22a068553575d2221a70fb4aaa25",
+  "vault": "0x108273C1Db4865CE65644195aFAB844A834891C2",
+  "agent": "0x8c6aB528531EEBEAE0CA11EAEc46da55A4D213ba",
+  "deploymentHash": "0x84351e7ccca65d7d9131704c16b918c34f8f7248b77eb237dc95fd0514cf5c02",
+  "paymentHash": "0xfc410c3062f9f0c9874ec9060ee2a64439b9d812271f8c6eb9af1c9e1cbe83b6"
+}

@@ -7,8 +7,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import GlobalStatsTicker from "./GlobalStatsTicker";
+import { network } from "@/lib/arc/config";
+
+const ARC_NAV = [
+  { href: "/arc", icon: "account_balance_wallet", label: "Arc Vault" },
+  { href: "/arc#arc-vault", icon: "savings", label: "Create & Fund" },
+  { href: "/arc#arc-revoke", icon: "verified_user", label: "Agent Capabilities" },
+  { href: "/arc#arc-payments", icon: "payments", label: "USDC Payments" },
+  { href: "/arc#arc-history", icon: "receipt_long", label: "Event History" },
+  { href: "/infrastructure", icon: "hub", label: "Arc Infrastructure" },
+  { href: "/submission", icon: "fact_check", label: "Grant Readiness" },
+  { href: "/testnet", icon: "science", label: "Arc Testnet" },
+];
 
 const NAV = [
+  { href: "/arc", icon: "account_balance_wallet", label: "Arc Vault" },
   { href: "/dashboard",   icon: "dashboard",          label: "Mission Control" },
   { href: "/provision",   icon: "tune",               label: "Provision" },
   { href: "/marketplace", icon: "storefront",          label: "Knowledge" },
@@ -19,12 +32,15 @@ const NAV = [
 
 export default function SidebarLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const isArc = pathname === "/arc" || pathname === "/testnet" || pathname === "/infrastructure" || pathname === "/submission";
+  const chain = network(pathname === "/testnet" ? "testnet" : process.env.NEXT_PUBLIC_ARC_NETWORK ?? "mainnet");
+  const arcNav = pathname === "/testnet" ? ARC_NAV.map(item => ({ ...item, href: item.href.startsWith('/arc#') ? item.href.replace('/arc#', '/testnet#') : item.href })) : ARC_NAV;
 
   return (
     <>
       {/* ── Sidebar ── */}
       <nav className="sidebar">
-        <Link href="/dashboard" className="sidebar-brand">
+        <Link href={isArc ? "/" : "/dashboard"} className="sidebar-brand">
           <div className="sidebar-brand-icon">
             <span
               className="material-symbols-outlined"
@@ -39,7 +55,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </Link>
 
         <div className="sidebar-nav">
-          {NAV.map((item) => (
+          {(isArc ? arcNav : NAV).map((item) => (
             <Link
               key={item.href}
               href={item.href}
@@ -61,7 +77,7 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
         </div>
 
         {/* Kill switch at bottom */}
-        <Link href="/kill-switch" className="sidebar-link kill-link">
+        {!isArc && <Link href="/kill-switch" className="sidebar-link kill-link">
           <span
             className="material-symbols-outlined"
             style={{ fontSize: "20px", fontVariationSettings: "'FILL' 1" }}
@@ -69,35 +85,35 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
             power_settings_new
           </span>
           Kill Switch
-        </Link>
+        </Link>}
       </nav>
 
       {/* ── Top header ── */}
       <header className="top-header">
         <div style={{ display: "flex", alignItems: "center", gap: "0.75rem" }}>
           <span style={{ fontSize: "0.8rem", color: "var(--on-surface-variant)" }}>
-            Sui Testnet
+            {isArc ? `${chain.name} · ${chain.id}` : "Legacy Sui Testnet"}
           </span>
           <div style={{ display: "flex", alignItems: "center", gap: "0.4rem" }}>
             <span className="pulse-dot live" />
-            <span style={{ fontSize: "0.75rem", color: "var(--secondary)" }}>Live</span>
+            <span style={{ fontSize: "0.75rem", color: "var(--secondary)" }}>{isArc ? pathname === "/testnet" ? "Testnet demo · inspect receipts" : "Mainnet unverified" : "Legacy integration"}</span>
           </div>
         </div>
 
         {/* Injected Global Stats Ticker in the center */}
         <div style={{ flex: 1, display: "flex", justifyContent: "center" }}>
-          <GlobalStatsTicker />
+          {!isArc && <GlobalStatsTicker />}
         </div>
 
         <Link
-          href="/kill-switch"
+          href={isArc ? `${pathname === "/testnet" ? "/testnet" : "/arc"}#arc-revoke` : "/kill-switch"}
           className="btn btn-kill"
           style={{ fontSize: "0.78rem", padding: "0.45rem 1rem" }}
         >
           <span className="material-symbols-outlined" style={{ fontSize: "16px" }}>
             power_settings_new
           </span>
-          Kill Switch
+          {isArc ? "Arc Revoke" : "Kill Switch"}
         </Link>
       </header>
 

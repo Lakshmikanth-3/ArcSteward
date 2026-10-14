@@ -4,6 +4,22 @@
   <p><em>The Wallet That Lets AI Agents Spend Without Ever Being Trusted — and Earns While It Waits</em></p>
 </div>
 
+## Arc Agent Vault (new, experimental)
+
+The Arc path is `/arc`: a Solidity USDC vault/factory with owner funding and withdrawal, agent authorization, lifetime and per-payment limits, recipient allowlists, timestamp expiry, revocation and real contract event history. A dedicated viem agent SDK/CLI signs bounded payments. Existing Sui and Base/Rooster paths remain separate.
+
+**Status: real Arc testnet deployment and 0.01 USDC agent payment verified on October 14, 2026. Mainnet deployment and a public Arc demo remain pending. No audit. Not submission-ready.** The public GitHub baseline still needs these local changes published. Build or testnet success does not establish Arc Microgrants eligibility.
+
+Open `/testnet` for the deployed development demo and click **Refresh on-chain state and history** to read actual Arc testnet balances, capabilities and events. Open `/submission` for the complete program checklist. [Testnet payment proof](https://explorer.testnet.arc.io/tx/0xfc410c3062f9f0c9874ec9060ee2a64439b9d812271f8c6eb9af1c9e1cbe83b6). This was a demonstration payment to the owner's test account, not a commercial purchase.
+
+Velo402 gives autonomous AI agents restricted authority to spend USDC through an owner-controlled vault. Owners define spending limits, authorized recipients and expiration rules, and can revoke permissions. The Arc deployment demonstrates programmable, policy-enforced payments with verifiable on-chain transactions. This describes the implemented testnet build; mainnet demonstration is still pending.
+
+Arc mainnet is chain **5042**, RPC **https://rpc.mainnet.arc.io**. Native gas USDC has **18 decimals**; vault/payment amounts exclusively use the USDC ERC-20 interface **0x3600000000000000000000000000000000000000**, **6 decimals**. The interfaces share one balance; never add them. Testnet is separate (5042002).
+
+From `app`, run `pnpm install --frozen-lockfile`, `pnpm arc:compile`, `pnpm arc:test`, `pnpm typecheck`, `pnpm build`, then `pnpm dev`. Configure only public network/factory values in the frontend. Dedicated signing keys stay in secure CLI/server environment variables. Mainnet broadcasts require separate human confirmation.
+
+See [migration plan](docs/ARC_MIGRATION_PLAN.md), [deployment](docs/ARC_DEPLOYMENT.md), [security](docs/ARC_SECURITY.md), [demo](docs/ARC_DEMO_SCRIPT.md), [submission draft](docs/ARC_MICROGRANTS_SUBMISSION.md) and [execution report](docs/ARC_EXECUTION_REPORT.md). Everything below describes the original Sui implementation and independent Base rail; those features have not been migrated to Arc.
+
 Velo402 is a Sui-native capability wallet, encrypted knowledge marketplace, autonomous trading engine, and idle-capital yield layer built end-to-end on the live **2026 Sui Stack** (Sui, Seal, Walrus, Nautilus, DeepBook Spot/Margin/Predict, and Scallop).
 
 > **Hackathon:** Sui Overflow 2026 (`overflow.sui.io`)  

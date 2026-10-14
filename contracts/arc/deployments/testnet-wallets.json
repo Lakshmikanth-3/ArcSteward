@@ -1,0 +1,7 @@
+{
+  "chainId": 5042002,
+  "owner": "0x816326154e067B3A69648432c4292C51827BbfB0",
+  "agent": "0x8c6aB528531EEBEAE0CA11EAEc46da55A4D213ba",
+  "recipient": "0x816326154e067B3A69648432c4292C51827BbfB0",
+  "warning": "Dedicated testnet accounts. No deployment or payment evidence yet."
+}

@@ -1,0 +1,28 @@
+{
+  "chainId": 5042002,
+  "factory": "0xFBFB323cBc2D22A068553575d2221a70Fb4aaa25",
+  "vault": "0x108273C1Db4865CE65644195aFAB844A834891C2",
+  "owner": "0x816326154e067B3A69648432c4292C51827BbfB0",
+  "agent": "0x8c6aB528531EEBEAE0CA11EAEc46da55A4D213ba",
+  "recipient": "0x816326154e067B3A69648432c4292C51827BbfB0",
+  "payment": {
+    "ok": true,
+    "hash": "0xfc410c3062f9f0c9874ec9060ee2a64439b9d812271f8c6eb9af1c9e1cbe83b6",
+    "blockNumber": "67183367",
+    "amountUnits": "10000",
+    "recipient": "0x816326154e067B3A69648432c4292C51827BbfB0",
+    "paymentId": "0x133bd0a6618ed7322ea1098df36cd1ce0886aab31c5b43f289618b6d4ef86883",
+    "remainingBudget": "0",
+    "balance": "0",
+    "spentBefore": "0"
+  },
+  "ownerTransactions": [
+    "0x676378fcda202e483d8175dfc1352d6bc2b5bbde09f6a0ab2b247432221d7340",
+    "0xcdd9144d3c9aee20957eaf363ca41d90290670587112844079687dae86815d05",
+    "0x274fc1c3d3883d2eaf95101896f92450c4324bdbc4c09e07f7a83203e09544c2",
+    "0x7318f0ce5242f310fcc78d7f290fc2ad83a05cd8e5ab0429fe2bbdc57b340f4f",
+    "0xfb4bf03ea6b5b0733ff5c3ea1f3f4f54fa7d197109422d39feff5e01de1720fd"
+  ],
+  "revokedPaymentSimulationRejected": true,
+  "testedAt": "2026-10-14T15:52:23.666Z"
+}

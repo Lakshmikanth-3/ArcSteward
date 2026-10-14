@@ -1,14 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import SidebarLayout from "@/components/SidebarLayout";
 import ConditionalLayout from "@/components/ConditionalLayout";
-import GlobalStatsTicker from "@/components/GlobalStatsTicker";
+import { projectDescription } from "@/lib/arc/project";
 
 export const metadata: Metadata = {
-  title: "Velo402 — Autonomous Agent Wallet",
-  description:
-    "Capability-scoped treasury for AI agents. PolicyCap-enforced budget, " +
-    "HTTP 402 data payments, DeepBook trading — all without human signatures.",
+  title: "Velo402 — Arc Agent Vault",
+  description: projectDescription,
 };
 
 export default function RootLayout({
