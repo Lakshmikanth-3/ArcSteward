@@ -85,7 +85,7 @@ test('browser owner creates/funds vault, authorizes agent; agent pays; owner rev
     await page.getByRole('button', { name: 'Pay USDC' }).click();
     await expect(page.getByText(/Remaining: 0.09 USDC/)).toBeVisible({ timeout: 20000 });
     const vault = await p.readContract({ address: factory, abi: factoryAbi, functionName: 'vaultOf', args: [owner.address] });
-    assert.equal((await p.readContract({ address: vault, abi: vaultAbi, functionName: 'capabilities', args: [agent.address] }))[2], 10000n);
+    assert.equal((await p.readContract({ address: vault, abi: vaultAbi, functionName: 'capabilities', args: [agent.address] }))[4], 10000n);
     selected = owner.address;
     await page.getByRole('button', { name: 'Connect EVM wallet' }).click();
     await expect(page.getByRole('status')).toContainText('Wallet connected');

@@ -7,12 +7,13 @@ import { writeFileSync } from 'node:fs';
 import { chromium, expect } from '@playwright/test';
 import { createPublicClient, createWalletClient, http, parseEther, erc20Abi, type Hex } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import deployment from '../src/lib/arc/testnet-deployment.json';
 import { arcTestnet, USDC } from '../src/lib/arc/config';
 import { vaultAbi, factoryAbi } from '../src/lib/arc/abi';
 import { director } from './arc-video';
 
 const BASE = process.env.E2E_BASE_URL ?? 'https://velo402.vercel.app';
-const FACTORY = '0xFBFB323cBc2D22A068553575d2221a70Fb4aaa25' as const;
+const FACTORY = deployment.factory as `0x${string}`;
 const rpc = http(arcTestnet.rpcUrls.default.http[0], { retryCount: 2 });
 const p = createPublicClient({ chain: arcTestnet, transport: rpc });
 
@@ -122,7 +123,7 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
       assert.equal(hashes.length, sent, `${id}: nothing was signed`);
       await d.scene(id === 'browser-over-limit' ? 'f07' : id === 'browser-outsider' ? 'f08' : 'f09', status);
     }
-    assert.equal((await p.readContract({ address: vault, abi: vaultAbi, functionName: 'capabilities', args: [agent.address] }))[2], 20_000n);
+    assert.equal((await p.readContract({ address: vault, abi: vaultAbi, functionName: 'capabilities', args: [agent.address] }))[4], 20_000n);
     // Owner: revoke, then agent is refused.
     await connect(owner.address);
     await page.getByRole('button', { name: 'Revoke immediately' }).click();

@@ -2,7 +2,7 @@ import { readFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import { createPublicClient, createWalletClient, http, erc20Abi, encodeDeployData, formatUnits, keccak256 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { network, USDC, address } from '../src/lib/arc/config';
-import { factoryAbi } from '../src/lib/arc/abi';
+import { factoryAbi, registryAbi } from '../src/lib/arc/abi';
 
 async function main() {
   const chain = network(process.env.ARC_NETWORK ?? 'mainnet');
@@ -46,7 +46,17 @@ async function main() {
   if (!code || code === '0x') throw new Error('Post-deployment bytecode missing');
   if ((await publicClient.readContract({ address: factory, abi: factoryAbi, functionName: 'usdc' })).toLowerCase() !== USDC.toLowerCase()) throw new Error('Post-deployment token mismatch');
   const block = await publicClient.getBlock({ blockNumber: receipt.blockNumber });
-  writeFileSync(path, JSON.stringify({ ...manifest, status: 'confirmed', factory, blockNumber: String(receipt.blockNumber), deployedAt: new Date(Number(block.timestamp) * 1000).toISOString(), runtimeCodeHash: keccak256(code) }, null, 2));
+  const confirmed = { ...manifest, status: 'confirmed', factory, blockNumber: String(receipt.blockNumber), deployedAt: new Date(Number(block.timestamp) * 1000).toISOString(), runtimeCodeHash: keccak256(code) };
+  writeFileSync(path, JSON.stringify(confirmed, null, 2));
   console.log(`Confirmed factory: ${factory}`);
+  // Merchant registry: a curated list vault owners can opt into. Curator defaults to the deployer.
+  const regArtifact = JSON.parse(readFileSync('../contracts/arc/artifacts/MerchantRegistry.json', 'utf8')) as { bytecode: `0x${string}` };
+  const curator = address(process.env.ARC_REGISTRY_CURATOR ?? deployer);
+  const regHash = await wallet.deployContract({ abi: registryAbi, bytecode: regArtifact.bytecode, args: [curator] });
+  writeFileSync(path, JSON.stringify({ ...confirmed, registryDeploymentHash: regHash }, null, 2));
+  const regReceipt = await publicClient.waitForTransactionReceipt({ hash: regHash, timeout: 90000 });
+  if (regReceipt.status !== 'success' || !regReceipt.contractAddress) throw new Error('Registry deployment failed; factory is deployed and recorded');
+  writeFileSync(path, JSON.stringify({ ...confirmed, registryDeploymentHash: regHash, registry: regReceipt.contractAddress, registryCurator: curator }, null, 2));
+  console.log(`Confirmed merchant registry: ${regReceipt.contractAddress}`);
 }
 main().catch(error => { console.error(error instanceof Error && !/0x[0-9a-fA-F]{64}/.test(error.message) ? error.message : 'Arc deployment/preflight failed. Reconcile saved hash and configuration.'); process.exitCode = 1; });

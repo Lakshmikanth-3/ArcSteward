@@ -32,7 +32,7 @@ test('Arc SDK reads real local state, submits payment and fails closed after rev
     await write({ address: USDC, abi: token.abi, functionName: 'mint', args: [owner.address, 1_000_000n] });
     await write({ address: USDC, abi: token.abi, functionName: 'approve', args: [vault, 1_000_000n] });
     await write({ address: vault, abi: vaultAbi, functionName: 'deposit', args: [1_000_000n] });
-    await write({ address: vault, abi: vaultAbi, functionName: 'authorize', args: [signer.address, 1_000_000n, 100_000n, (await publicClient.getBlock()).timestamp + 1000n, [recipient.address]] });
+    await write({ address: vault, abi: vaultAbi, functionName: 'authorize', args: [signer.address, { maxTotal: 1_000_000n, maxPayment: 100_000n, maxPerDay: 1_000_000n, gasAllowance: 0n, expiresAt: (await publicClient.getBlock()).timestamp + 1000n, useRegistry: false }, [recipient.address]] });
     const sdk = new ArcAgent(signer, vault, 'testnet', rpc);
     assert.equal((await sdk.state()).balance, 1_000_000n);
     const payment = await sdk.pay(recipient.address, '0.01', keccak256(toHex('sdk-invoice')));

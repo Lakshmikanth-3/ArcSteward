@@ -5,12 +5,13 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium, type Locator, type Page } from '@playwright/test';
 import { createPublicClient, createWalletClient, http, parseEther, type Hex } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import deployment from '../src/lib/arc/testnet-deployment.json';
 import { arcTestnet } from '../src/lib/arc/config';
 import { factoryAbi, vaultAbi } from '../src/lib/arc/abi';
 
 const DIR = process.env.DEMO_DIR!;
 const BASE = process.env.E2E_BASE_URL ?? 'https://velo402.vercel.app';
-const FACTORY = '0xFBFB323cBc2D22A068553575d2221a70Fb4aaa25' as const;
+const FACTORY = deployment.factory as `0x${string}`;
 const dur = JSON.parse(readFileSync(`${DIR}/dur.json`, 'utf8')) as Record<string, number>;
 const rpc = http(arcTestnet.rpcUrls.default.http[0], { retryCount: 2 });
 const p = createPublicClient({ chain: arcTestnet, transport: rpc });

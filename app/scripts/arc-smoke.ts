@@ -45,7 +45,7 @@ async function main() {
   const deposit = await p.simulateContract({ account: owner, address: vault, abi: vaultAbi, functionName: 'deposit', args: [units] });
   await confirm(await wallet.writeContract(deposit.request));
   const expiresAt = (await p.getBlock()).timestamp + 3600n;
-  const authorize = await p.simulateContract({ account: owner, address: vault, abi: vaultAbi, functionName: 'authorize', args: [agent.address, units, units, expiresAt, [recipient]] });
+  const authorize = await p.simulateContract({ account: owner, address: vault, abi: vaultAbi, functionName: 'authorize', args: [agent.address, { maxTotal: units, maxPayment: units, maxPerDay: units, gasAllowance: 0n, expiresAt, useRegistry: false }, [recipient]] });
   await confirm(await wallet.writeContract(authorize.request));
   const payment = await new ArcAgent(agent, vault, net, process.env.ARC_RPC_URL).pay(recipient, amount, keccak256(toHex(idText)));
   const revoke = await p.simulateContract({ account: owner, address: vault, abi: vaultAbi, functionName: 'revoke', args: [agent.address] });
