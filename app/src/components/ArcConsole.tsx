@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { AlertTriangle, ArrowUpRight, Info, History, LockKeyhole, Send, ShieldCheck, Wallet } from 'lucide-react';
 import { createPublicClient, createWalletClient, custom, http, erc20Abi, keccak256, toHex, type Address, type EIP1193Provider, type Hash } from 'viem';
 import { network, USDC, address, usdcAmount, displayUsdc } from '@/lib/arc/config';
 import { vaultAbi, factoryAbi } from '@/lib/arc/abi';
@@ -115,40 +116,43 @@ export default function ArcConsole({ networkName, rpcUrl, factoryAddress = '', i
   }
   const isOwner = !!account && !!owner && account.toLowerCase() === owner.toLowerCase();
   const wrongChain = !!account && connectedChain !== chain.id;
-  const field = (label: string, value: string, set: (s: string) => void, type = 'text') => <label style={{ display: 'grid', gap: 6 }}>{label}<input className="input" type={type} value={value} onChange={e => set(e.target.value)} style={{ padding: 10, border: '1px solid #555', borderRadius: 6, width: '100%' }} /></label>;
-  const button = (label: string, action: () => Promise<void>, disabled = false) => <button className="btn" disabled={busy || disabled} onClick={() => void run(action)}>{label}</button>;
-  return <div className="arc-console" style={{ display: 'grid', gap: 24, maxWidth: 1000 }}>
-    <div><h1>Arc Agent Vault</h1><p>Owner funds. Agent pays. Contracts enforce the limits.</p><p>{chain.name} · Chain {chain.id} · ERC-20 USDC amounts use 6 decimals · gas uses 18 decimals</p><p>Experimental, unaudited. Mainnet readiness requires verified deployment, payment evidence and a working public link.</p><p><Link href="/arc">Production console</Link> · <Link href="/testnet">Arc Testnet console</Link> · <Link href="/submission">Submission readiness</Link></p>{networkName === 'testnet' && <p>TESTNET ONLY — use free faucet USDC. Testnet results do not satisfy the mainnet grant requirement.</p>}</div>
-    <section id="arc-connect" style={{ display: 'grid', gap: 12 }}><h2>1. Connect wallet</h2><p>{account ?? 'Disconnected'}</p>
+  const field = (label: string, value: string, set: (s: string) => void, type = 'text') => <label className="arc-field">{label}<input type={type} value={value} onChange={e => set(e.target.value)} placeholder={type === 'text' && label.toLowerCase().includes('address') ? '0x…' : undefined} autoComplete="off" spellCheck={false} /></label>;
+  const button = (label: string, action: () => Promise<void>, disabled = false, variant = '') => <button className={`btn ${variant}`} disabled={busy || disabled} onClick={() => void run(action)}>{label}</button>;
+  return <div className="arc-console">
+    <div className="arc-page-heading"><div><span className="arc-eyebrow">{networkName === 'testnet' ? 'DEVELOPMENT / LIVE TESTNET' : 'PAYMENTS / OWNER WORKSPACE'}</span><h1>Arc Agent Vault</h1><p>Owner funds. Agent pays. Contracts enforce the limits.</p></div><Link href="/submission" className="arc-badge warning">Mainnet evidence pending <ArrowUpRight size={13} /></Link></div>
+    <div className="arc-notice"><AlertTriangle size={16} /><span>{networkName === 'testnet' ? 'Testnet only. Use free faucet USDC; these results do not satisfy the mainnet grant requirement.' : 'Experimental and unaudited. Verify the deployment before funding. Mainnet deployment and public demo are pending.'}</span></div>
+    <div className="arc-stat-grid"><div className="arc-stat"><span>VAULT BALANCE</span><strong>{balance === undefined ? '—' : displayUsdc(balance)} <small>USDC available</small></strong><small>{balance === undefined ? 'Load state to read balance' : 'Available: ' + displayUsdc(balance) + ' USDC'}</small></div><div className="arc-stat"><span>AGENT CAPABILITY</span><strong>{policy ? policy[5] ? 'Active' : 'Revoked' : 'Not loaded'}</strong><small>{policy ? `Active: ${String(policy[5])}` : 'Owner-defined permissions'}</small></div><div className="arc-stat"><span>REMAINING BUDGET</span><strong>{policy ? displayUsdc(policy[0] - policy[2]) : '—'}</strong><small>{policy ? `Remaining: ${displayUsdc(policy[0] - policy[2])} USDC` : 'Lifetime budget less spending'}</small></div><div className="arc-stat"><span>PAYMENT NETWORK</span><strong>{networkName === 'testnet' ? 'Arc Testnet' : 'Arc Mainnet'}</strong><small>Chain {chain.id} · USDC</small></div></div>
+    <div role="status" aria-live="polite" className="arc-status"><Info size={16} /><div>{message}{hash && <p><a href={`${chain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">Transaction: {hash}</a></p>}</div></div>
+    <div className="arc-console-grid"><div className="arc-panel-stack">
+    <section id="arc-connect"><div className="arc-panel-head"><span className="arc-panel-icon"><Wallet size={18} /></span><div><h2>Connect your wallet</h2><p>01 / Your wallet signs every transaction</p></div></div><div className="arc-wallet-row"><span className="arc-badge">{account ? 'Connected' : 'Disconnected'}</span><span className="arc-address">{account ?? 'No wallet connected'}</span></div><div className="arc-actions">
       {button('Connect EVM wallet', async () => { const p = provider(); if (!p) throw new Error('Install an EVM wallet with an injected provider'); const w = createWalletClient({ chain, transport: custom(p) }); const [a] = await w.requestAddresses(); setAccount(a); setConnectedChain(await w.getChainId()); setMessage('Wallet connected. Switch network if needed, then load or create a vault.'); })}
       {wrongChain && button(`Switch to ${chain.name}`, async () => { const w = createWalletClient({ transport: custom(provider()!) }); try { await w.switchChain({ id: chain.id }); } catch { await w.addChain({ chain }); await w.switchChain({ id: chain.id }); } setMessage('Network changed. Reconnect your wallet.'); })}
-    </section>
-    <section id="arc-vault" style={{ display: 'grid', gap: 12 }}><h2>2. Create or load vault</h2>
+    </div></section>
+    <section id="arc-vault"><div className="arc-panel-head"><span className="arc-panel-icon"><LockKeyhole size={18} /></span><div><h2>Create or load vault</h2><p>02 / Fund a vault that you control</p></div></div><div className="arc-fields">
       {field('Factory address (verified deployment)', factoryText, setFactoryText)}
       {button('Create my vault', async () => { const w = await signer(); const f = address(factoryText); if (!await client.getBytecode({ address: f })) throw new Error('Factory not deployed'); if ((await client.readContract({ address: f, abi: factoryAbi, functionName: 'usdc' })).toLowerCase() !== USDC.toLowerCase()) throw new Error('Factory token mismatch'); const existing = await client.readContract({ address: f, abi: factoryAbi, functionName: 'vaultOf', args: [account!] }); if (!/^0x0{40}$/i.test(existing)) { setVault(existing); setMessage('Existing vault loaded; refresh to read its balance.'); return; } const { request } = await client.simulateContract({ account: account!, address: f, abi: factoryAbi, functionName: 'createVault' }); await confirmed(await w.writeContract(request)); setVault(await client.readContract({ address: f, abi: factoryAbi, functionName: 'vaultOf', args: [account!] })); }, !account || wrongChain || !factoryText)}
       {!factoryText && <p>Factory address is not configured. Deploy and configure a factory before creating vaults.</p>}
       {field('Vault address', vault, v => { setVault(v); setOwner(undefined); setBalance(undefined); setHistory([]); setPolicy(undefined); })}
       {button('Refresh on-chain state and history', async () => { await refresh(); setMessage('On-chain state refreshed'); }, !vault)}
-      <p>Owner: {owner ?? 'Load vault'} · Available: {balance === undefined ? 'Unknown' : `${displayUsdc(balance)} USDC`}</p>
+      <dl className="arc-info-list"><div><dt>Vault owner</dt><dd className="arc-address">{owner ?? 'Load vault to inspect owner'}</dd></div></dl>
       {vault && <a href={`${chain.blockExplorers.default.url}/address/${vault}`} target="_blank" rel="noreferrer">Inspect vault on Arc Explorer</a>}
       {field('Deposit / withdrawal / payment amount (USDC)', amount, setAmount)}
-      <div>{button('Approve exact amount and deposit', () => mutate('deposit'), !isOwner || wrongChain)} {button('Withdraw to owner', () => mutate('withdraw'), !isOwner || wrongChain)}</div>
-    </section>
-    <section id="arc-revoke" style={{ display: 'grid', gap: 12 }}><h2>3. Authorize or revoke agent</h2>
+      <div className="arc-actions">{button('Approve exact amount and deposit', () => mutate('deposit'), !isOwner || wrongChain)} {button('Withdraw to owner', () => mutate('withdraw'), !isOwner || wrongChain, 'secondary')}</div><p>Amounts use ERC-20 USDC with 6 decimals. Native gas uses 18 decimals. Only the loaded vault owner can deposit or withdraw.</p>
+    </div></section></div><div className="arc-panel-stack">
+    <section id="arc-revoke"><div className="arc-panel-head"><span className="arc-panel-icon"><ShieldCheck size={18} /></span><div><h2>Agent permissions</h2><p>03 / Define the boundaries before spending</p></div></div><div className="arc-fields">
       {field('Agent EVM address', agent, a => { setAgent(a); setPolicy(undefined); })}
-      {field('Lifetime total budget (USDC)', total, setTotal)} {field('Maximum per payment (USDC)', perPayment, setPerPayment)}
+      <div className="arc-field-pair">{field('Lifetime total budget (USDC)', total, setTotal)} {field('Maximum per payment (USDC)', perPayment, setPerPayment)}</div>
       {field('Permitted recipients (comma separated)', recipients, setRecipients)} {field('Expiry (your local time)', expires, setExpires, 'datetime-local')}
       <p>Updates preserve the amount already spent. Remaining budget is the total ceiling minus lifetime spending.</p>
-      <div>{button('Authorize / update', () => mutate('authorize'), !isOwner || wrongChain)} {button('Revoke immediately', () => mutate('revoke'), !isOwner || wrongChain)}</div>
-      {policy && <p>Active: {String(policy[5])} · Spent: {displayUsdc(policy[2])} USDC · Remaining: {displayUsdc(policy[0] - policy[2])} USDC · Expires: {new Date(Number(policy[3]) * 1000).toLocaleString()}</p>}
-    </section>
-    <section id="arc-payments" style={{ display: 'grid', gap: 12 }}><h2>4. Execute payment as connected agent</h2><p>Connect the authorized agent wallet, load the vault and use a unique payment ID. A server agent can use the dedicated Arc SDK/CLI.</p>
+      <div className="arc-actions">{button('Authorize / update', () => mutate('authorize'), !isOwner || wrongChain)} {button('Revoke immediately', () => mutate('revoke'), !isOwner || wrongChain, 'danger')}</div>
+      {policy && <p>Spent: {displayUsdc(policy[2])} USDC · Expires: {new Date(Number(policy[3]) * 1000).toLocaleString()}</p>}
+    </div></section>
+    <section id="arc-payments"><div className="arc-panel-head"><span className="arc-panel-icon"><Send size={18} /></span><div><h2>Execute a payment</h2><p>04 / Sign with the authorized agent wallet</p></div></div><div className="arc-fields"><p>Connect the authorized agent wallet, load the vault and use a unique payment ID. A server agent can use the dedicated Arc SDK/CLI. Payment uses the USDC amount entered in the vault panel.</p>
       {field('Payment recipient', recipient, setRecipient)} {field('Unique invoice / payment ID', paymentId, setPaymentId)}
       {button('Simulate and pay USDC', () => mutate('pay'), !account || wrongChain || !vault)}
-    </section>
-    <div role="status" aria-live="polite" style={{ overflowWrap: 'anywhere' }}>{message}{hash && <p><a href={`${chain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">Transaction: {hash}</a></p>}</div>
-    <section id="arc-history"><h2>Contract event history</h2><p>Actual logs only. Loaded from block {historyFrom === undefined ? 'unknown' : String(historyFrom)}; amounts in event details are six-decimal integer units.</p>
-      {history.length === 0 ? <p>No events in the loaded window, or history has not been loaded.</p> : history.map((row, i) => <div key={`${row.hash}-${i}`} style={{ padding: 12, borderBottom: '1px solid #444', overflowWrap: 'anywhere' }}><a href={`${chain.blockExplorers.default.url}/tx/${row.hash}`} target="_blank" rel="noreferrer">{row.event} · block {row.block}</a><pre style={{ whiteSpace: 'pre-wrap' }}>{row.detail}</pre></div>)}
+    </div></section></div></div>
+    <section id="arc-history"><div className="arc-panel-head"><span className="arc-panel-icon"><History size={18} /></span><div><h2>Contract event history</h2><p>Confirmed activity, read directly from Arc</p></div></div><p>Actual logs only. Loaded from block {historyFrom === undefined ? 'unknown' : String(historyFrom)}; amounts in event details are six-decimal integer units.</p>
+      {history.length === 0 ? <div className="arc-empty"><History size={24} /><strong>No events loaded</strong><p>Load a vault and refresh its on-chain state to inspect activity.</p></div> : history.map((row, i) => <div key={`${row.hash}-${i}`} className="arc-event"><a href={`${chain.blockExplorers.default.url}/tx/${row.hash}`} target="_blank" rel="noreferrer">{row.event} · block {row.block} ↗</a><pre>{row.detail}</pre></div>)}
       {historyFrom !== undefined && historyFrom > 0n && button('Load earlier events', () => refresh(historyFrom - 1n))}
     </section>
   </div>;
