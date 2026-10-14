@@ -1,0 +1,13 @@
+{
+  "name": "@velo402/arc-sdk",
+  "version": "0.2.0",
+  "description": "Agent SDK for Velo402 vaults on Arc: policy-enforced USDC payments and HTTP 402 pay-per-request.",
+  "license": "MIT",
+  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "files": ["dist", "README.md"],
+  "scripts": { "build": "tsc -p tsconfig.json" },
+  "peerDependencies": { "viem": "^2.21.0" },
+  "repository": { "type": "git", "url": "https://github.com/Lakshmikanth-3/velo-arc", "directory": "sdk" }
+}

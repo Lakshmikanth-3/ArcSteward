@@ -21,3 +21,5 @@ app/playwright-report/
 app/test-results/
 app/.next-arc-ui-test/
 demo/
+sdk/node_modules/
+sdk/dist/
