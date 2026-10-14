@@ -28,9 +28,14 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
   const wallets = { [owner.address]: createWalletClient({ account: owner, chain: arcTestnet, transport: rpc }), [agent.address]: createWalletClient({ account: agent, chain: arcTestnet, transport: rpc }) };
   let selected: `0x${string}` = owner.address;
   const hashes: string[] = [];
-  const browser = await chromium.launch();
+  // ARC_RECORD_DIR records a video of the run (used for the demo video).
+  const record = process.env.ARC_RECORD_DIR;
+  const browser = await chromium.launch({ slowMo: record ? 120 : 0 });
   try {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 1000 } });
+    const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, ...(record ? { recordVideo: { dir: record, size: { width: 1920, height: 1080 } } } : {}) });
+    const page = await context.newPage();
+    const t0 = Date.now(); const marks: Record<string, number> = {};
+    const mark = (label: string) => { marks[label] = (Date.now() - t0) / 1000; };
     await page.exposeFunction('testWalletRequest', async ({ method, params }: { method: string; params?: unknown[] }) => {
       if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [selected];
       if (method === 'eth_chainId') return `0x${arcTestnet.id.toString(16)}`;
@@ -52,6 +57,7 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
     await connect(owner.address);
 
     // Owner: create vault from the verified factory.
+    mark('create');
     await page.getByRole('textbox', { name: /Factory address/ }).fill(FACTORY);
     await page.getByRole('button', { name: 'Create my vault' }).click();
     await expect(status).toContainText('Confirmed', { timeout: 90_000 });
@@ -66,11 +72,13 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
     }
 
     // Owner: deposit 0.1 USDC.
+    mark('deposit');
     await page.getByLabel('Deposit / withdrawal / payment amount (USDC)').fill('0.1');
     await page.getByRole('button', { name: 'Approve exact amount and deposit' }).click();
     await expect(page.getByText(/Available: 0.1 USDC/)).toBeVisible({ timeout: 120_000 });
 
     // Owner: authorize agent (0.05 total, 0.02 per payment, owner is the only recipient).
+    mark('authorize');
     await page.getByLabel('Agent EVM address').fill(agent.address);
     await page.getByLabel('Lifetime total budget (USDC)').fill('0.05');
     await page.getByLabel('Maximum per payment (USDC)').fill('0.02');
@@ -80,6 +88,7 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
     await page.getByRole('button', { name: 'Authorize / update' }).click();
     await expect(page.getByText(/Active: true/)).toBeVisible({ timeout: 90_000 });
 
+    mark('pay');
     // Agent: valid payment.
     await connect(agent.address);
     await page.getByLabel('Deposit / withdrawal / payment amount (USDC)').fill('0.02');
@@ -88,6 +97,7 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
     await page.getByRole('button', { name: 'Pay USDC' }).click();
     await expect(page.getByText(/Remaining: 0.03 USDC/)).toBeVisible({ timeout: 90_000 });
 
+    mark('attacks');
     // Agent: manipulation attempts are rejected and move nothing.
     const attempts: [string, string, string, RegExp][] = [
       ['0.03', owner.address, 'browser-over-limit', /per-payment limit/],
@@ -105,6 +115,7 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
     }
     assert.equal((await p.readContract({ address: vault, abi: vaultAbi, functionName: 'capabilities', args: [agent.address] }))[2], 20_000n);
 
+    mark('revoke');
     // Owner: revoke, then agent is refused.
     await connect(owner.address);
     await page.getByRole('button', { name: 'Revoke immediately' }).click();
@@ -115,6 +126,7 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
     await page.getByRole('button', { name: 'Pay USDC' }).click();
     await expect(status).toContainText('Unauthorized', { timeout: 30_000 });
 
+    mark('withdraw');
     // Owner: withdraw the remaining 0.08 USDC; event history shows the full lifecycle.
     await connect(owner.address);
     await page.getByLabel('Deposit / withdrawal / payment amount (USDC)').fill('0.08');
@@ -125,8 +137,10 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
     await page.getByRole('button', { name: 'Refresh on-chain state and history' }).click();
     await expect(status).toContainText('On-chain state refreshed', { timeout: 30_000 });
     for (const ev of ['Funded', 'Authorized', 'Paid', 'Revoked', 'Withdrawn']) await expect(page.getByText(new RegExp(ev)).first()).toBeVisible({ timeout: 15_000 });
+    mark('history'); await page.waitForTimeout(record ? 4000 : 0); mark('end');
+    if (record) writeFileSync(`${record}/marks.json`, JSON.stringify(marks));
     await page.screenshot({ path: '../contracts/arc/deployments/5042002-browser.png', fullPage: true });
     writeFileSync('../contracts/arc/deployments/5042002-browser.json', JSON.stringify({ chainId: arcTestnet.id, site: BASE, vault, owner: owner.address, agent: agent.address, transactions: hashes, status: 'PASS', testedAt: new Date().toISOString() }, null, 2));
     assert.ok(await p.readContract({ address: USDC, abi: erc20Abi, functionName: 'balanceOf', args: [owner.address] }) > 0n);
-  } finally { await browser.close(); }
+  } finally { await browser.close(); }  // closing flushes any recorded video
 });

@@ -20,3 +20,4 @@ app/tsconfig.tsbuildinfo
 app/playwright-report/
 app/test-results/
 app/.next-arc-ui-test/
+demo/
