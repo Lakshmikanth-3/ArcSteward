@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "./arc-workspace.css";
 import ConditionalLayout from "@/components/ConditionalLayout";
 import { projectDescription } from "@/lib/arc/project";
 

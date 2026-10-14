@@ -8,6 +8,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import GlobalStatsTicker from "./GlobalStatsTicker";
 import { network } from "@/lib/arc/config";
+import ArcWorkspace from "./ArcWorkspace";
 
 const ARC_NAV = [
   { href: "/arc", icon: "account_balance_wallet", label: "Arc Vault" },
@@ -35,6 +36,8 @@ export default function SidebarLayout({ children }: { children: React.ReactNode 
   const isArc = pathname === "/arc" || pathname === "/testnet" || pathname === "/infrastructure" || pathname === "/submission";
   const chain = network(pathname === "/testnet" ? "testnet" : process.env.NEXT_PUBLIC_ARC_NETWORK ?? "mainnet");
   const arcNav = pathname === "/testnet" ? ARC_NAV.map(item => ({ ...item, href: item.href.startsWith('/arc#') ? item.href.replace('/arc#', '/testnet#') : item.href })) : ARC_NAV;
+
+  if (isArc) return <ArcWorkspace>{children}</ArcWorkspace>;
 
   return (
     <>
