@@ -12,7 +12,7 @@ Velo402 adds a capability-scoped USDC vault on Arc to an existing agent wallet p
 
 Arc implementation: immutable Solidity vault/factory, USDC ERC-20 accounting at six decimals, viem wallet console at `/arc`, dedicated server agent SDK/CLI, contract events, preflight/deployment/smoke scripts. Arc pays gas in native USDC at eighteen decimals. Native and token views are never summed.
 
-Repository: https://github.com/Lakshmikanth-3/velo402 (public source baseline; local Arc changes still need publishing).
+Repository: https://github.com/Lakshmikanth-3/velo-arc.
 
 Public live demo: **PENDING — no verified link**.
 
@@ -30,7 +30,7 @@ The Sui treasury, PolicyCap, Seal/Walrus, Nautilus, DeepBook, Guardian and Scall
 ## Acceptance checklist
 
 - [x] Pasted program terms reviewed; official URL remains https://dorahacks.io/hackathon/arc-microgrants/build.
-- [ ] Arc code published to public repository.
+- [x] Arc code published to https://github.com/Lakshmikanth-3/velo-arc.
 - [ ] Working Arc mainnet factory and vault, actual receipt/state checked.
 - [ ] Positive real mainnet agent USDC payment with independently verifiable receipt.
 - [ ] Public live `/arc` URL and full wallet flow tested by reviewer.

@@ -6,7 +6,7 @@ Based on the complete program text supplied by the user on October 14, 2026. Off
 |---|---|---|
 | Already deployed and working on Arc mainnet at submission | NOT MET | Separately approve and perform mainnet deployment and verified payment after testnet success |
 | Public live deployment link reviewers can open | NOT MET | Publish current frontend with actual mainnet configuration; localhost is insufficient |
-| Public repository | PARTIAL | Existing repo is public, but current local Arc implementation must be published |
+| Public repository | MET | Arc source published at https://github.com/Lakshmikanth-3/velo-arc |
 | Short description explaining project and Arc use | IMPLEMENTED | Exact user description added to homepage, metadata and submission draft with pending-deployment qualification |
 | Public GitHub/X/Farcaster builder profile | MET | https://github.com/Lakshmikanth-3 is accessible and belongs to the given repo owner |
 | Real Arc component, not a mockup/slide deck | IMPLEMENTED LOCALLY | Solidity vault/factory, actual viem transaction path, dedicated agent SDK, receipts and event reads; chain proof still needed |
@@ -44,4 +44,4 @@ Completed: live testnet deployment, payment, revocation, owner recovery, all eig
 
 ## Outstanding external steps
 
-Public hosting and GitHub publication require authorized account access. Mainnet spending remains subject to the separate confirmation required in the original master prompt. No amount of local/testnet implementation can substitute for these program requirements.
+Arc source is published at https://github.com/Lakshmikanth-3/velo-arc. Public hosting still requires account access. Mainnet spending remains subject to separate confirmation. No amount of local/testnet implementation can substitute for these program requirements.

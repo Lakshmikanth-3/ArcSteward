@@ -8,7 +8,7 @@ export default function SubmissionPage() {
     <section><h2>Project description</h2><p>{projectDescription}</p><p>This is the submission description for the deployed application. Mainnet evidence remains pending.</p></section>
     <section><h2>Required evidence</h2><table style={{ width: '100%', textAlign: 'left' }}><thead><tr><th>Requirement</th><th>Current status</th></tr></thead><tbody>
       <tr><td>Working Arc mainnet app with public live link</td><td>Missing — localhost is not a public deployment</td></tr>
-      <tr><td>Public source repository</td><td><a href={repositoryUrl}>Repository available</a>; current Arc changes need publishing</td></tr>
+      <tr><td>Public source repository</td><td><a href={repositoryUrl}>Arc source published</a></td></tr>
       <tr><td>Short project description and Arc usage</td><td>Added above</td></tr>
       <tr><td>Public builder profile</td><td><a href={builderProfileUrl}>GitHub builder profile</a></td></tr>
       <tr><td>No prior Circle/Arc funding</td><td>Confirmed by project owner on October 14, 2026</td></tr>

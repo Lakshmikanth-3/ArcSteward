@@ -50,7 +50,7 @@ async function main() {
   if (process.argv.includes('--online')) {
     try { const response = await fetch(profile, { signal: AbortSignal.timeout(15000) }); results.push({ check: 'Public builder profile', status: response.ok ? 'PASS' : 'FAIL', detail: profile }); } catch { results.push({ check: 'Public builder profile', status: 'FAIL', detail: profile }); }
     try {
-      const response = await fetch('https://raw.githubusercontent.com/Lakshmikanth-3/velo402/main/contracts/arc/ArcVault.sol', { signal: AbortSignal.timeout(15000) });
+      const response = await fetch('https://raw.githubusercontent.com/Lakshmikanth-3/velo-arc/main/contracts/arc/ArcVault.sol', { signal: AbortSignal.timeout(15000) });
       const remote = (await response.text()).replace(/\r\n/g, '\n');
       const local = readFileSync('../contracts/arc/ArcVault.sol', 'utf8').replace(/\r\n/g, '\n');
       results.push({ check: 'Current Arc source published', status: response.ok && remote === local ? 'PASS' : 'MISSING', detail: 'Public repository must contain this Arc implementation, not just the previous Sui baseline.' });
