@@ -1,23 +1,26 @@
 import Link from 'next/link';
+import { AlertTriangle, ArrowUpRight, ClipboardCheck, FileText, FlaskConical, CalendarDays } from 'lucide-react';
 import { projectDescription, repositoryUrl, builderProfileUrl } from '@/lib/arc/project';
 import demo from '@/lib/arc/testnet-demo.json';
 
 export default function SubmissionPage() {
-  return <div className="arc-console" style={{ display: 'grid', gap: 24, maxWidth: 1000 }}>
-    <div><h1>Arc Microgrants readiness</h1><p>Not eligible for submission yet. The program requires a working Arc mainnet deployment; testnet-only builds do not qualify.</p></div>
-    <section><h2>Project description</h2><p>{projectDescription}</p><p>This is the submission description for the deployed application. Mainnet evidence remains pending.</p></section>
-    <section><h2>Required evidence</h2><table style={{ width: '100%', textAlign: 'left' }}><thead><tr><th>Requirement</th><th>Current status</th></tr></thead><tbody>
-      <tr><td>Working Arc mainnet app with public live link</td><td>Missing — localhost is not a public deployment</td></tr>
-      <tr><td>Public source repository</td><td><a href={repositoryUrl}>Arc source published</a></td></tr>
-      <tr><td>Short project description and Arc usage</td><td>Added above</td></tr>
-      <tr><td>Public builder profile</td><td><a href={builderProfileUrl}>GitHub builder profile</a></td></tr>
-      <tr><td>No prior Circle/Arc funding</td><td>Confirmed by project owner on October 14, 2026</td></tr>
-      <tr><td>Rights to submit, one submission per project</td><td>Owner must confirm before submitting</td></tr>
-      <tr><td>Restricted-jurisdiction screening and payout verification</td><td>Program review and builder verification required</td></tr>
-      <tr><td>Arc USDC payout wallet</td><td>Owner must select a mainnet receiving wallet</td></tr>
-    </tbody></table></section>
-    <section><h2>Submission timing</h2><p>The pasted terms state October 14, 2026 at 23:59 Eastern Time — October 15, 2026 at 09:29 India Standard Time. Program dates may change; check the program page before submitting.</p><a href="https://dorahacks.io/hackathon/arc-microgrants/build" target="_blank" rel="noreferrer">Official Arc Microgrants page</a></section>
-    <section><h2>What is implemented</h2><p>Owner funding and withdrawals, bounded agent payments, allowlists, expiry, revocation, replay protection, event history and a dedicated agent signer. These must be deployed and demonstrated on mainnet before the working-build requirement is met.</p><Link href="/arc" className="btn">Open Arc vault console</Link></section>
-    <section><h2>Real testnet proof</h2><p>A real 0.01 USDC payment settled on Arc Testnet (5042002), followed by revocation. This is development evidence, not mainnet eligibility.</p><p><a href={`https://explorer.testnet.arc.io/tx/${demo.paymentHash}`} target="_blank" rel="noreferrer">Inspect the successful testnet payment</a></p><Link href="/testnet" className="btn">Open deployed testnet demo</Link></section>
+  return <div className="arc-console">
+    <div className="arc-page-heading"><div><span className="arc-eyebrow">ARC MICROGRANTS / SUBMISSION EVIDENCE</span><h1>Build first. Prove it on mainnet.</h1><p>A transparent checklist of what is complete and what remains.</p></div><span className="arc-badge warning">Not submission-ready</span></div>
+    <div className="arc-notice"><AlertTriangle size={16} /><span>The program requires a working Arc mainnet deployment and a public live link. Testnet-only builds do not qualify.</span></div>
+    <div className="arc-stat-grid"><div className="arc-stat"><span>PUBLIC SOURCE</span><strong>Published</strong><small>velo-arc / main</small></div><div className="arc-stat"><span>TESTNET PROOF</span><strong>Verified</strong><small>Real USDC payment & revocation</small></div><div className="arc-stat"><span>MAINNET EVIDENCE</span><strong>Pending</strong><small>Deployment & real payment</small></div><div className="arc-stat"><span>PUBLIC LIVE LINK</span><strong>Pending</strong><small>Localhost is a local preview</small></div></div>
+    <div className="arc-info-grid"><section className="full-width"><div className="arc-panel-head"><span className="arc-panel-icon"><ClipboardCheck size={18} /></span><div><h2>Required evidence</h2><p>Based on the supplied Arc Microgrants program terms</p></div></div><div className="arc-table-wrap"><table><thead><tr><th>Requirement</th><th>Status</th><th>Evidence / next step</th></tr></thead><tbody>
+      <tr><td>Working Arc mainnet deployment</td><td><span className="arc-badge warning">Missing</span></td><td>Deploy, execute a real payment and verify receipts.</td></tr>
+      <tr><td>Public live deployment link</td><td><span className="arc-badge warning">Missing</span></td><td>Host the frontend with verified mainnet configuration.</td></tr>
+      <tr><td>Public source repository</td><td><span className="arc-badge">Complete</span></td><td><a href={repositoryUrl} target="_blank" rel="noreferrer">velo-arc ↗</a></td></tr>
+      <tr><td>Short description & Arc use</td><td><span className="arc-badge">Complete</span></td><td>Project description below.</td></tr>
+      <tr><td>Public builder profile</td><td><span className="arc-badge">Complete</span></td><td><a href={builderProfileUrl} target="_blank" rel="noreferrer">GitHub builder profile ↗</a></td></tr>
+      <tr><td>No prior Circle/Arc funding</td><td><span className="arc-badge">Declared</span></td><td>Owner confirmed on October 14, 2026.</td></tr>
+      <tr><td>Rights to submit & one submission</td><td><span className="arc-badge warning">Owner action</span></td><td>Confirm rights and submit once for this project.</td></tr>
+      <tr><td>USDC payout wallet on Arc</td><td><span className="arc-badge warning">Owner action</span></td><td>Select a secure mainnet receiving wallet.</td></tr>
+      <tr><td>Jurisdiction screening & payout verification</td><td><span className="arc-badge">Program review</span></td><td>Complete official verification if conditionally selected.</td></tr>
+    </tbody></table></div></section>
+    <section><div className="arc-panel-head"><span className="arc-panel-icon"><FileText size={18} /></span><div><h2>Project description</h2><p>What Velo402 does with Arc</p></div></div><p className="arc-copy">{projectDescription}</p><div className="arc-divider" /><p>This behavior is demonstrated on testnet. Mainnet deployment and payment evidence remain pending.</p><div className="arc-actions" style={{ marginTop: 18 }}><Link href="/arc" className="btn">Open vault workspace <ArrowUpRight size={14} /></Link></div></section>
+    <div className="arc-panel-stack"><section><div className="arc-panel-head"><span className="arc-panel-icon"><FlaskConical size={18} /></span><div><h2>Real testnet proof</h2><p>Development evidence / chain 5042002</p></div></div><p>A real 0.01 USDC agent payment settled on Arc Testnet, followed by revocation. Live enforcement checks cover budgets, recipients, expiry, caller authorization and duplicate IDs.</p><div className="arc-actions" style={{ marginTop: 18 }}><Link href="/testnet" className="btn secondary">Inspect demo</Link><a className="btn secondary" href={`https://explorer.testnet.arc.io/tx/${demo.paymentHash}`} target="_blank" rel="noreferrer">Payment receipt ↗</a></div></section>
+    <section><div className="arc-panel-head"><span className="arc-panel-icon"><CalendarDays size={18} /></span><div><h2>Submission timing</h2><p>Dates from the supplied program text</p></div></div><dl className="arc-info-list"><div><dt>Closes / Eastern Time</dt><dd>Oct 14, 2026 · 23:59</dd></div><div><dt>India Standard Time</dt><dd>Oct 15, 2026 · 09:29</dd></div></dl><p>Program dates may change. Check the official page before submitting.</p><a href="https://dorahacks.io/hackathon/arc-microgrants/build" target="_blank" rel="noreferrer">Official Arc Microgrants page ↗</a></section></div></div>
   </div>;
 }

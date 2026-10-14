@@ -9,7 +9,7 @@ Based on the complete program text supplied by the user on October 14, 2026. Off
 | Public repository | MET | Arc source published at https://github.com/Lakshmikanth-3/velo-arc |
 | Short description explaining project and Arc use | IMPLEMENTED | Exact user description added to homepage, metadata and submission draft with pending-deployment qualification |
 | Public GitHub/X/Farcaster builder profile | MET | https://github.com/Lakshmikanth-3 is accessible and belongs to the given repo owner |
-| Real Arc component, not a mockup/slide deck | IMPLEMENTED LOCALLY | Solidity vault/factory, actual viem transaction path, dedicated agent SDK, receipts and event reads; chain proof still needed |
+| Real Arc component, not a mockup/slide deck | VERIFIED ON TESTNET | Deployed factory/vault, real USDC payment and revocation, eight enforcement checks and browser reads; mainnet proof remains pending |
 | Testnet-only builds excluded | NOT MET UNTIL MAINNET | Testnet proof is development validation and never substituted for mainnet |
 | No prior Circle/Arc program funding | CONFIRMED | User answered no prior Circle/Arc funding in this chat |
 | Work owned or right to submit | OWNER DECLARATION | User supplied this as their existing GitHub project; final submission rights remain owner's responsibility |
