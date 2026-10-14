@@ -83,7 +83,14 @@ export default function ArcConsole({ networkName, rpcUrl, factoryAddress = '', i
     if (receipt.status !== 'success') throw new Error(`Transaction reverted: ${tx}`);
     setMessage(`Confirmed in block ${receipt.blockNumber}`);
   }
+  // Public RPCs occasionally fail or lag a block right after a confirmation; retry before reporting.
   async function refresh(before?: bigint) {
+    for (let attempt = 0; ; attempt++) {
+      try { return await refreshOnce(before); }
+      catch (error) { if (attempt === 2) throw error; await new Promise(resolve => setTimeout(resolve, 2500)); }
+    }
+  }
+  async function refreshOnce(before?: bigint) {
     const v = await validateVault();
     const [b, o] = await Promise.all([client.readContract({ address: v, abi: vaultAbi, functionName: 'balance' }), client.readContract({ address: v, abi: vaultAbi, functionName: 'owner' })]);
     setBalance(b); setOwner(o);

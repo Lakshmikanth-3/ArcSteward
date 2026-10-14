@@ -9,6 +9,7 @@ import { createPublicClient, createWalletClient, http, parseEther, erc20Abi, typ
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
 import { arcTestnet, USDC } from '../src/lib/arc/config';
 import { vaultAbi, factoryAbi } from '../src/lib/arc/abi';
+import { director } from './arc-video';
 
 const BASE = process.env.E2E_BASE_URL ?? 'https://velo402.vercel.app';
 const FACTORY = '0xFBFB323cBc2D22A068553575d2221a70Fb4aaa25' as const;
@@ -30,12 +31,12 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
   const hashes: string[] = [];
   // ARC_RECORD_DIR records a video of the run (used for the demo video).
   const record = process.env.ARC_RECORD_DIR;
-  const browser = await chromium.launch({ slowMo: record ? 120 : 0 });
+  const browser = await chromium.launch({ slowMo: record ? 250 : 0 });
   try {
     const context = await browser.newContext({ viewport: { width: 1920, height: 1080 }, ...(record ? { recordVideo: { dir: record, size: { width: 1920, height: 1080 } } } : {}) });
     const page = await context.newPage();
-    const t0 = Date.now(); const marks: Record<string, number> = {};
-    const mark = (label: string) => { marks[label] = (Date.now() - t0) / 1000; };
+    const d = director(page, record);
+    const sec = (title: string) => page.locator('section', { hasText: title }).first();
     await page.exposeFunction('testWalletRequest', async ({ method, params }: { method: string; params?: unknown[] }) => {
       if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [selected];
       if (method === 'eth_chainId') return `0x${arcTestnet.id.toString(16)}`;
@@ -49,15 +50,23 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
       return p.request({ method, params } as never);
     });
     await page.addInitScript('window.ethereum = { request: (r) => window.testWalletRequest(r), on() {}, removeListener() {} };');
+    if (d.enabled) {
+      await page.goto(`${BASE}/`); await d.scene('p01', page.locator('.arc-home-hero'));
+      await d.scene('p02', page.locator('#how-it-works'));
+      await page.goto(`${BASE}/infrastructure`); await d.scene('p03', sec('Network configuration'));
+      await page.goto(`${BASE}/security`); await d.scene('p04', sec('Threat model'));
+      await d.scene('p05', sec('Live Arc testnet receipts'));
+    }
     const status = page.getByRole('status');
     const connect = async (who: `0x${string}`) => { selected = who; await page.getByRole('button', { name: 'Connect EVM wallet' }).click(); await expect(status).toContainText('Wallet connected', { timeout: 30_000 }); };
 
     await page.goto(`${BASE}/testnet`);
     await page.getByRole('textbox', { name: 'Vault address' }).fill('');
+    await page.getByLabel('Agent EVM address').fill('');
     await connect(owner.address);
+    await d.scene('f01', sec('Connect your wallet'));
 
     // Owner: create vault from the verified factory.
-    mark('create');
     await page.getByRole('textbox', { name: /Factory address/ }).fill(FACTORY);
     await page.getByRole('button', { name: 'Create my vault' }).click();
     await expect(status).toContainText('Confirmed', { timeout: 90_000 });
@@ -70,15 +79,15 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
       try { await expect(status).toContainText('On-chain state refreshed', { timeout: 20_000 }); break; }
       catch (e) { if (i === 2) throw e; await page.waitForTimeout(3000); }
     }
+    await d.scene('f02', sec('Create or load vault'));
 
     // Owner: deposit 0.1 USDC.
-    mark('deposit');
     await page.getByLabel('Deposit / withdrawal / payment amount (USDC)').fill('0.1');
     await page.getByRole('button', { name: 'Approve exact amount and deposit' }).click();
     await expect(page.getByText(/Available: 0.1 USDC/)).toBeVisible({ timeout: 120_000 });
+    await d.scene('f03', page.locator('.arc-stat-grid'));
 
     // Owner: authorize agent (0.05 total, 0.02 per payment, owner is the only recipient).
-    mark('authorize');
     await page.getByLabel('Agent EVM address').fill(agent.address);
     await page.getByLabel('Lifetime total budget (USDC)').fill('0.05');
     await page.getByLabel('Maximum per payment (USDC)').fill('0.02');
@@ -87,8 +96,7 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
     await page.getByLabel('Expiry (your local time)').fill(String(expiry));
     await page.getByRole('button', { name: 'Authorize / update' }).click();
     await expect(page.getByText(/Active: true/)).toBeVisible({ timeout: 90_000 });
-
-    mark('pay');
+    await d.scene('f04', sec('Agent permissions'));
     // Agent: valid payment.
     await connect(agent.address);
     await page.getByLabel('Deposit / withdrawal / payment amount (USDC)').fill('0.02');
@@ -96,8 +104,8 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
     await page.getByLabel('Unique invoice / payment ID').fill('browser-testnet-1');
     await page.getByRole('button', { name: 'Pay USDC' }).click();
     await expect(page.getByText(/Remaining: 0.03 USDC/)).toBeVisible({ timeout: 90_000 });
-
-    mark('attacks');
+    const payHash = hashes[hashes.length - 1];
+    await d.scene('f05', page.locator('.arc-stat-grid'));
     // Agent: manipulation attempts are rejected and move nothing.
     const attempts: [string, string, string, RegExp][] = [
       ['0.03', owner.address, 'browser-over-limit', /per-payment limit/],
@@ -112,33 +120,40 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
       await page.getByRole('button', { name: 'Pay USDC' }).click();
       await expect(status).toContainText(error, { timeout: 30_000 });
       assert.equal(hashes.length, sent, `${id}: nothing was signed`);
+      await d.scene(id === 'browser-over-limit' ? 'f07' : id === 'browser-outsider' ? 'f08' : 'f09', status);
     }
     assert.equal((await p.readContract({ address: vault, abi: vaultAbi, functionName: 'capabilities', args: [agent.address] }))[2], 20_000n);
-
-    mark('revoke');
     // Owner: revoke, then agent is refused.
     await connect(owner.address);
     await page.getByRole('button', { name: 'Revoke immediately' }).click();
     await expect(page.getByText(/Active: false/)).toBeVisible({ timeout: 90_000 });
+    await d.scene('f10', page.locator('.arc-stat-grid'));
     await connect(agent.address);
     await page.getByLabel('Deposit / withdrawal / payment amount (USDC)').fill('0.01');
     await page.getByLabel('Unique invoice / payment ID').fill('browser-after-revoke');
     await page.getByRole('button', { name: 'Pay USDC' }).click();
     await expect(status).toContainText('Unauthorized', { timeout: 30_000 });
-
-    mark('withdraw');
+    await d.scene('f11', status);
     // Owner: withdraw the remaining 0.08 USDC; event history shows the full lifecycle.
     await connect(owner.address);
     await page.getByLabel('Deposit / withdrawal / payment amount (USDC)').fill('0.08');
     await page.getByRole('button', { name: 'Withdraw to owner' }).click();
     await expect(page.getByText(/Available: 0 USDC/)).toBeVisible({ timeout: 90_000 });
+    await d.scene('f12', page.locator('.arc-stat-grid'));
     assert.equal(await p.readContract({ address: vault, abi: vaultAbi, functionName: 'balance' }), 0n);
     await page.waitForTimeout(3000);
-    await page.getByRole('button', { name: 'Refresh on-chain state and history' }).click();
-    await expect(status).toContainText('On-chain state refreshed', { timeout: 30_000 });
+    for (let i = 0; ; i++) {
+      await page.getByRole('button', { name: 'Refresh on-chain state and history' }).click();
+      try { await expect(status).toContainText('On-chain state refreshed', { timeout: 20_000 }); break; }
+      catch (e) { if (i === 3) throw e; await page.waitForTimeout(4000); }
+    }
     for (const ev of ['Funded', 'Authorized', 'Paid', 'Revoked', 'Withdrawn']) await expect(page.getByText(new RegExp(ev)).first()).toBeVisible({ timeout: 15_000 });
-    mark('history'); await page.waitForTimeout(record ? 4000 : 0); mark('end');
-    if (record) writeFileSync(`${record}/marks.json`, JSON.stringify(marks));
+    await d.scene('f13', sec('Contract event history'));
+    if (d.enabled) {
+      await page.goto(`https://explorer.testnet.arc.io/tx/${payHash}`); await page.waitForLoadState('networkidle').catch(() => {});
+      await d.scene('f06');
+    }
+    d.save();
     await page.screenshot({ path: '../contracts/arc/deployments/5042002-browser.png', fullPage: true });
     writeFileSync('../contracts/arc/deployments/5042002-browser.json', JSON.stringify({ chainId: arcTestnet.id, site: BASE, vault, owner: owner.address, agent: agent.address, transactions: hashes, status: 'PASS', testedAt: new Date().toISOString() }, null, 2));
     assert.ok(await p.readContract({ address: USDC, abi: erc20Abi, functionName: 'balanceOf', args: [owner.address] }) > 0n);
