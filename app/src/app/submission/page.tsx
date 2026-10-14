@@ -1,16 +1,16 @@
 import Link from 'next/link';
 import { AlertTriangle, ArrowUpRight, ClipboardCheck, FileText, FlaskConical, CalendarDays } from 'lucide-react';
-import { projectDescription, repositoryUrl, builderProfileUrl } from '@/lib/arc/project';
+import { projectDescription, repositoryUrl, builderProfileUrl, publicDemoUrl } from '@/lib/arc/project';
 import demo from '@/lib/arc/testnet-demo.json';
 
 export default function SubmissionPage() {
   return <div className="arc-console">
     <div className="arc-page-heading"><div><span className="arc-eyebrow">ARC MICROGRANTS / SUBMISSION EVIDENCE</span><h1>Build first. Prove it on mainnet.</h1><p>A transparent checklist of what is complete and what remains.</p></div><span className="arc-badge warning">Not submission-ready</span></div>
     <div className="arc-notice"><AlertTriangle size={16} /><span>The program requires a working Arc mainnet deployment and a public live link. Testnet-only builds do not qualify.</span></div>
-    <div className="arc-stat-grid"><div className="arc-stat"><span>PUBLIC SOURCE</span><strong>Published</strong><small>velo-arc / main</small></div><div className="arc-stat"><span>TESTNET PROOF</span><strong>Verified</strong><small>Real USDC payment & revocation</small></div><div className="arc-stat"><span>MAINNET EVIDENCE</span><strong>Pending</strong><small>Deployment & real payment</small></div><div className="arc-stat"><span>PUBLIC LIVE LINK</span><strong>Pending</strong><small>Localhost is a local preview</small></div></div>
+    <div className="arc-stat-grid"><div className="arc-stat"><span>PUBLIC SOURCE</span><strong>Published</strong><small>velo-arc / main</small></div><div className="arc-stat"><span>TESTNET PROOF</span><strong>Verified</strong><small>Real USDC payment & revocation</small></div><div className="arc-stat"><span>MAINNET EVIDENCE</span><strong>Pending</strong><small>Deployment & real payment</small></div><div className="arc-stat"><span>PUBLIC FRONTEND</span><strong>Published</strong><small>Vercel · mainnet evidence pending</small></div></div>
     <div className="arc-info-grid"><section className="full-width"><div className="arc-panel-head"><span className="arc-panel-icon"><ClipboardCheck size={18} /></span><div><h2>Required evidence</h2><p>Based on the supplied Arc Microgrants program terms</p></div></div><div className="arc-table-wrap"><table><thead><tr><th>Requirement</th><th>Status</th><th>Evidence / next step</th></tr></thead><tbody>
       <tr><td>Working Arc mainnet deployment</td><td><span className="arc-badge warning">Missing</span></td><td>Deploy, execute a real payment and verify receipts.</td></tr>
-      <tr><td>Public live deployment link</td><td><span className="arc-badge warning">Missing</span></td><td>Host the frontend with verified mainnet configuration.</td></tr>
+      <tr><td>Public live deployment link</td><td><span className="arc-badge warning">Partial</span></td><td><a href={publicDemoUrl} target="_blank" rel="noreferrer">Open hosted prototype ↗</a>; mainnet configuration and wallet journey remain pending.</td></tr>
       <tr><td>Public source repository</td><td><span className="arc-badge">Complete</span></td><td><a href={repositoryUrl} target="_blank" rel="noreferrer">velo-arc ↗</a></td></tr>
       <tr><td>Short description & Arc use</td><td><span className="arc-badge">Complete</span></td><td>Project description below.</td></tr>
       <tr><td>Public builder profile</td><td><span className="arc-badge">Complete</span></td><td><a href={builderProfileUrl} target="_blank" rel="noreferrer">GitHub builder profile ↗</a></td></tr>

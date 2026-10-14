@@ -8,7 +8,7 @@
 
 The Arc path is `/arc`: a Solidity USDC vault/factory with owner funding and withdrawal, agent authorization, lifetime and per-payment limits, recipient allowlists, timestamp expiry, revocation and real contract event history. A dedicated viem agent SDK/CLI signs bounded payments. Existing Sui and Base/Rooster paths remain separate.
 
-**Status: real Arc testnet deployment and 0.01 USDC agent payment verified on October 14, 2026. Mainnet deployment and a public Arc demo remain pending. No audit. Not submission-ready.** Arc source repository: [Lakshmikanth-3/velo-arc](https://github.com/Lakshmikanth-3/velo-arc). Build or testnet success does not establish Arc Microgrants eligibility.
+**Status: real Arc testnet deployment and 0.01 USDC agent payment verified on October 14, 2026. Public frontend: [velo-arc-zeta.vercel.app](https://velo-arc-zeta.vercel.app). Mainnet deployment and payment remain pending. No audit. Not submission-ready.** Arc source repository: [Lakshmikanth-3/velo-arc](https://github.com/Lakshmikanth-3/velo-arc). Hosting, build or testnet success does not establish Arc Microgrants eligibility.
 
 Open `/testnet` for the deployed development demo and click **Refresh on-chain state and history** to read actual Arc testnet balances, capabilities and events. Open `/submission` for the complete program checklist. [Testnet payment proof](https://explorer.testnet.arc.io/tx/0xfc410c3062f9f0c9874ec9060ee2a64439b9d812271f8c6eb9af1c9e1cbe83b6). This was a demonstration payment to the owner's test account, not a commercial purchase.
 

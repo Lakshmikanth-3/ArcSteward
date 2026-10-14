@@ -14,7 +14,7 @@ Arc implementation: immutable Solidity vault/factory, USDC ERC-20 accounting at 
 
 Repository: https://github.com/Lakshmikanth-3/velo-arc.
 
-Public live demo: **PENDING — no verified link**.
+Public frontend: https://velo-arc-zeta.vercel.app. The `/testnet` page reads the verified development deployment. A working mainnet deployment and complete hosted mainnet wallet journey remain pending.
 
 Builder profile: https://github.com/Lakshmikanth-3 (public GitHub profile of the repository owner, verified accessible).
 

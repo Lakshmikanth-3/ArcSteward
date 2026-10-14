@@ -1,7 +1,7 @@
 {
   "eligible": false,
   "chainId": 5042,
-  "checkedAt": "2026-10-14T16:56:55.896Z",
+  "checkedAt": "2026-10-14T17:16:46.294Z",
   "results": [
     {
       "check": "Local checks",
@@ -24,9 +24,9 @@
       "detail": "Supply actual vault and payment receipt hash"
     },
     {
-      "check": "Public live URL",
-      "status": "MISSING",
-      "detail": "Deploy frontend and provide working /arc URL"
+      "check": "Public live URL responds",
+      "status": "PASS",
+      "detail": "https://velo-arc-zeta.vercel.app/arc"
     },
     {
       "check": "Public builder profile",

@@ -24,7 +24,7 @@ export default function LandingPage() {
           <h1>Give your agent a budget.<br /><span>Keep control on Arc.</span></h1>
           <p>Fund a USDC vault, authorize an agent and let smart contracts enforce who it can pay, how much it can spend and when its permission expires.</p>
           <div className="arc-home-actions"><Link href="/arc" className="arc-home-button">Open Arc vault ↗</Link><Link href="/infrastructure" className="arc-home-button secondary">Explore the infrastructure</Link></div>
-          <p className="arc-home-status">Prototype · tested locally · mainnet deployment and public demo pending · unaudited</p>
+          <p className="arc-home-status">Public prototype · testnet verified · mainnet deployment pending · unaudited</p>
         </div>
         <div className="arc-home-vault-visual" aria-label="Arc vault enforces agent payment limits">
           <div className="arc-home-visual-top"><span>VELO402 / ARC VAULT</span><span>POLICY ENGINE</span></div>
