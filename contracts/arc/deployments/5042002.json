@@ -1,0 +1,21 @@
+{
+  "chainId": 5042002,
+  "officialRpc": "https://rpc.testnet.arc.io",
+  "deployer": "0x816326154e067B3A69648432c4292C51827BbfB0",
+  "usdc": "0x3600000000000000000000000000000000000000",
+  "erc20Decimals": 6,
+  "gasDecimals": 18,
+  "deploymentHash": "0x66af367e54a312c7300de6562f4a3a9b2442f4a306c06eaf644c9c95cade97fb",
+  "compiler": "0.8.30",
+  "optimizerRuns": 200,
+  "evmVersion": "paris",
+  "submittedAt": "2026-10-14T23:30:37.671Z",
+  "status": "confirmed",
+  "factory": "0x5f8ff982221709bb9e85fa0eb793e305491d0fb1",
+  "blockNumber": "67237675",
+  "deployedAt": "2026-10-14T23:30:37.000Z",
+  "runtimeCodeHash": "0x1b00441ff3603b6d127a0d653bf200181f976287deb8761e2d072fa1f1f6d43b",
+  "registryDeploymentHash": "0x3ef451caf33ea7aef9cd219bb00c7b811a5edea58291c001949145c9d33cc7ca",
+  "registry": "0xb29d4bf988430337113898607b4095e12f49b1c3",
+  "registryCurator": "0x816326154e067B3A69648432c4292C51827BbfB0"
+}

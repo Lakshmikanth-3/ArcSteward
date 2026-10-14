@@ -1,0 +1,28 @@
+{
+  "chainId": 5042002,
+  "factory": "0x5f8ff982221709bb9e85fa0eb793e305491d0fb1",
+  "vault": "0xA30B080Cf5b3e496229E7FB228a018d2f64ef14a",
+  "owner": "0xb5F3b803101EC3f44c44Ae34eBec871b3D6Cc67a",
+  "agent": "0x0570035222f5500976F3ebF62DF4d8e611Ea0f61",
+  "transactions": {
+    "fundOwner": "0x0ee3cfcc90202c35c4769ede020bb0924def18453b836f889b1224945d7ac59b",
+    "fundAgent": "0x6813cc8e30ec7e7ededca5bfb927c7c9586ad1968552a7b96f7667eba7b5d7bc",
+    "createVault": "0xd2663e61ba6071320b56b7bbc768b907541f8c60e73c347396904011a92cd799",
+    "approve": "0xc7b050cc197bfa370c3495ce7408100dd79a726f3c1ffe92f76852e4ebf997ee",
+    "deposit": "0x043bb81e5713fda8d4918b19d430ba8a37b8dbb422042fd9399b4622c92c18a5",
+    "authorize": "0xbc04d72c994b7d5158b1fefd752f9a2bbd2ccdb2c94cb4a4bffb44d8bdc50e5f",
+    "pay": "0x7bb613be01f26097988ba3a3dfee5c6c8195d24aa7eab051954b0194659fcaca",
+    "authorizeV2": "0x5af5d89017cc1dbc7ac4af79c4cad60fda092b1751ffe8bc5ed46f4f4caf7ec2",
+    "topUpGas": "0x4af3ebddddc05fe190731ea203d2983b76681e0da3350179ee21c665a0b3bb6a",
+    "setRecipient": "0x3f015ffe0648c2e6b553e093c95587102b4772c851b1d72f78e0e9a0e368afd0",
+    "removeRecipient": "0x167fd0fc6308ccadd4afab9e88fcc037ac7bc818fc1c7cbdbcd6973c4b0b206d",
+    "setRegistry": "0xed60eaffd455e28639b6f5f6a4697fae307febd9dce1a82d8aa94ddd7557726a",
+    "authorizeRegistry": "0x9b86015c5a0d1e985245131b3a03182978b248cbadb107ed16749614be33a23d",
+    "reauthorizeShort": "0xa27d421aad1410666b815383a333ad12f0e5873b4f95b51a959a7ec099e624df",
+    "reauthorize": "0xe2890d51bbf2ca3949d87deb057121a06ab1b6bae5ad12de554e11f3729f572c",
+    "revoke": "0x7b8561c587a5fcc8d1c3641e0e8d7723e21fb3d1a85c05638c33dfa5b9b603ac",
+    "withdraw": "0x151fe27c3dc03cc193ded8fcc3f45fa033cf53298edc43d57930a15141f77862"
+  },
+  "status": "PASS",
+  "testedAt": "2026-10-14T23:35:48.491Z"
+}
