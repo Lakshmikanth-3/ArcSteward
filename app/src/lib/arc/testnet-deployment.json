@@ -4,5 +4,24 @@
   "vault": "0x108273C1Db4865CE65644195aFAB844A834891C2",
   "agent": "0x8c6aB528531EEBEAE0CA11EAEc46da55A4D213ba",
   "deploymentHash": "0x84351e7ccca65d7d9131704c16b918c34f8f7248b77eb237dc95fd0514cf5c02",
-  "paymentHash": "0xfc410c3062f9f0c9874ec9060ee2a64439b9d812271f8c6eb9af1c9e1cbe83b6"
+  "paymentHash": "0xfc410c3062f9f0c9874ec9060ee2a64439b9d812271f8c6eb9af1c9e1cbe83b6",
+  "e2e": {
+    "vault": "0x8A291A4c731FE2535c0A24aFc9A7C874d409efCf",
+    "owner": "0xa3B514208f2C08e73918501d41c7FFF362756f20",
+    "agent": "0x68BaB1ff831755Ab0cec4b6D58A758111050184c",
+    "transactions": {
+      "fundOwner": "0x17c5fc535b38d1a5a5eb37d948c28c291c153ff7358ef341ac15d1cd058646db",
+      "fundAgent": "0x6be448b401d38ed25e2b2ea90d38dabdacc4d19ccacaa1c2d1cdef939fd69e74",
+      "createVault": "0xd200167bbb9fce2a099efefa3a092bd4f105ae8ef6465743093ccaf928ce30ab",
+      "approve": "0x9d147de501c9a437af76b62d6fd595d89e9c030c7ac6ceb303a8ed38628914ea",
+      "deposit": "0xf4a483c676660eb6c5c0c0114087174a200ea5bb5b45c694c852a210c3b34501",
+      "authorize": "0x21ecd43296a1d5ab86c8417c911206dba8a4e2985d2163539128dc5fae386ffa",
+      "pay": "0x20dcf71dda3f91773f9965c7db4902fcba1556e486584376bccbbbf3b1f88f3a",
+      "reauthorizeShort": "0xbea25cf017dd3259f838d456bd50b2377a21c0aaad07fc6dab1dea0f47e9a6ce",
+      "reauthorize": "0xbeeec0e4ff1b34c21d7c6fc0d375f6f47f3675cae2fb981d8a44fe41f8e6642f",
+      "revoke": "0x3b1e0b271034d3c3a575f80d37f741e12cb6c1f3ceaa888c1e80f8b79c0b6a70",
+      "withdraw": "0xb37e5b14e42ffb5555990f154be039952861061382295791023478b9f829b1e7"
+    },
+    "testedAt": "2026-10-14T17:41:25.189Z"
+  }
 }

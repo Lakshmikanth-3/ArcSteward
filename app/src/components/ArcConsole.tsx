@@ -27,7 +27,7 @@ export default function ArcConsole({ networkName, rpcUrl, factoryAddress = '', i
   const [amount, setAmount] = useState('0.01');
   const [paymentId, setPaymentId] = useState('');
   const [busy, setBusy] = useState(false);
-  const [message, setMessage] = useState('Connect an EVM wallet to begin. Arc deployment status is unverified.');
+  const [message, setMessage] = useState('Connect an EVM wallet to begin.');
   const [hash, setHash] = useState<Hash>();
   const [balance, setBalance] = useState<bigint>();
   const [owner, setOwner] = useState<Address>();
@@ -119,8 +119,8 @@ export default function ArcConsole({ networkName, rpcUrl, factoryAddress = '', i
   const field = (label: string, value: string, set: (s: string) => void, type = 'text') => <label className="arc-field">{label}<input type={type} value={value} onChange={e => set(e.target.value)} placeholder={type === 'text' && label.toLowerCase().includes('address') ? '0x…' : undefined} autoComplete="off" spellCheck={false} /></label>;
   const button = (label: string, action: () => Promise<void>, disabled = false, variant = '') => <button className={`btn ${variant}`} disabled={busy || disabled} onClick={() => void run(action)}>{label}</button>;
   return <div className="arc-console">
-    <div className="arc-page-heading"><div><span className="arc-eyebrow">{networkName === 'testnet' ? 'DEVELOPMENT / LIVE TESTNET' : 'PAYMENTS / OWNER WORKSPACE'}</span><h1>Arc Agent Vault</h1><p>Owner funds. Agent pays. Contracts enforce the limits.</p></div><Link href="/submission" className="arc-badge warning">Mainnet evidence pending <ArrowUpRight size={13} /></Link></div>
-    <div className="arc-notice"><AlertTriangle size={16} /><span>{networkName === 'testnet' ? 'Testnet only. Use free faucet USDC; these results do not satisfy the mainnet grant requirement.' : 'Experimental and unaudited. Verify the deployment before funding. Mainnet deployment and payment evidence are pending.'}</span></div>
+    <div className="arc-page-heading"><div><span className="arc-eyebrow">{networkName === 'testnet' ? 'DEVELOPMENT / LIVE TESTNET' : 'PAYMENTS / OWNER WORKSPACE'}</span><h1>Arc Agent Vault</h1><p>Owner funds. Agent pays. Contracts enforce the limits.</p></div><Link href="/security" className="arc-badge">Security proof <ArrowUpRight size={13} /></Link></div>
+    <div className="arc-notice"><AlertTriangle size={16} /><span>{networkName === 'testnet' ? 'Arc Testnet. Get free test USDC from faucet.circle.com.' : 'Payments are final once confirmed. Verify the factory address before funding.'}</span></div>
     <div className="arc-stat-grid"><div className="arc-stat"><span>VAULT BALANCE</span><strong>{balance === undefined ? '—' : displayUsdc(balance)} <small>USDC available</small></strong><small>{balance === undefined ? 'Load state to read balance' : 'Available: ' + displayUsdc(balance) + ' USDC'}</small></div><div className="arc-stat"><span>AGENT CAPABILITY</span><strong>{policy ? policy[5] ? 'Active' : 'Revoked' : 'Not loaded'}</strong><small>{policy ? `Active: ${String(policy[5])}` : 'Owner-defined permissions'}</small></div><div className="arc-stat"><span>REMAINING BUDGET</span><strong>{policy ? displayUsdc(policy[0] - policy[2]) : '—'}</strong><small>{policy ? `Remaining: ${displayUsdc(policy[0] - policy[2])} USDC` : 'Lifetime budget less spending'}</small></div><div className="arc-stat"><span>PAYMENT NETWORK</span><strong>{networkName === 'testnet' ? 'Arc Testnet' : 'Arc Mainnet'}</strong><small>Chain {chain.id} · USDC</small></div></div>
     <div role="status" aria-live="polite" className="arc-status"><Info size={16} /><div>{message}{hash && <p><a href={`${chain.blockExplorers.default.url}/tx/${hash}`} target="_blank" rel="noreferrer">Transaction: {hash}</a></p>}</div></div>
     <div className="arc-console-grid"><div className="arc-panel-stack">

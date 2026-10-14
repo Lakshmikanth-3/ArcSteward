@@ -1,21 +1,13 @@
 "use client";
 /**
  * ConditionalLayout.tsx
- * Wraps children in the sidebar layout ONLY for inner app pages.
- * The landing page (/) and any paths starting with /kill-switch render standalone.
+ * The landing page (/) renders standalone; every other page uses the Arc workspace shell.
  */
 import { usePathname } from "next/navigation";
-import SidebarLayout from "./SidebarLayout";
-
-// Paths that render WITHOUT the sidebar shell
-const STANDALONE_PATHS = ["/"];
+import ArcWorkspace from "./ArcWorkspace";
 
 export default function ConditionalLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-
-  if (STANDALONE_PATHS.includes(pathname)) {
-    return <>{children}</>;
-  }
-
-  return <SidebarLayout>{children}</SidebarLayout>;
+  if (pathname === "/") return <>{children}</>;
+  return <ArcWorkspace>{children}</ArcWorkspace>;
 }

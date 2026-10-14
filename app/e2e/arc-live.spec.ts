@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import { test, expect } from '@playwright/test';
 
 // Live site smoke: every Arc page loads and the testnet console reads real chain state.
-for (const path of ['/', '/arc', '/testnet', '/infrastructure', '/submission']) {
+for (const path of ['/', '/arc', '/testnet', '/infrastructure', '/security']) {
   test(`page ${path} loads without errors`, async ({ page }) => {
     const errors: string[] = [];
     page.on('pageerror', e => errors.push(e.message));

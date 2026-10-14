@@ -7,7 +7,7 @@ test('Arc console states missing evidence and disables owner operations while di
   await expect(page.getByRole('button', { name: 'Approve exact amount and deposit' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Authorize / update' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Pay USDC' })).toBeDisabled();
-  await expect(page.getByText(/Mainnet evidence pending/).first()).toBeVisible();
+  await expect(page.getByText(/Security proof/).first()).toBeVisible();
   await expect(page.getByText(/No events loaded/)).toBeVisible();
   await page.getByRole('button', { name: 'Connect EVM wallet' }).click();
   await expect(page.getByRole('status')).toContainText('Install an EVM wallet');
