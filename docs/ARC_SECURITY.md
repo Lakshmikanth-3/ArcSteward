@@ -1,16 +1,32 @@
 # Arc security model
 
-Solidity constraints are authoritative. The frontend and SDK pre-check each call against the live contract (eth_call) to give clear errors before signing, but grant no authority. A randomized attacker test (`app/scripts/arc-adversarial.test.mjs`) and live testnet runs verify the rules below.
+Solidity constraints are authoritative. The frontend and SDK pre-check each call against the live contract (eth_call) to give clear errors before signing, but grant no authority. A randomized attacker test (`app/scripts/arc-adversarial.test.mjs`), the live testnet suite (`arc-testnet-e2e.test.ts`) and the HTTP 402 suite (`arc-x402.test.ts`) verify the rules below.
 
-Owner is immutable. Only owner can deposit through the deposit method, grant/revoke or withdraw. Any account can send USDC directly; direct transfers increase the authoritative ERC-20 balance but do not emit `Funded`. Native sends through ordinary calldata are rejected; forced native balance can still appear in Arc's shared ERC-20 view. No double-counting or yield strategy exists in the Arc implementation.
+## Roles
 
-Each agent has a lifetime spend total, maximum per-payment amount, timestamp expiry and a versioned recipient allowlist. Updates preserve spend and replace the active recipient version. Reauthorization after revocation preserves spending and used payment IDs. Owners must raise the lifetime ceiling deliberately to issue additional budget. Budgets are ceilings, not reserved balances; several agents compete for available funds. Only an agent's transaction sender can use that agent's capability.
+- **Owner** (immutable per vault): deposit, authorize, edit recipients, set the merchant registry, revoke, withdraw. The owner can be any address, including a multisig such as Safe, which is the recommended way to get key recovery.
+- **Agent**: may only call `pay()` and `topUpGas()`, each bounded by its capability.
+- **Registry curator**: approves merchants in the `MerchantRegistry`. A vault trusts a registry only if its owner sets it with `setRegistry` and authorizes an agent with `useRegistry = true`.
 
-The contract checks authorization, expiry (`timestamp >= expiry` rejected), allowlist, nonzero amount/ID, duplicate ID, transaction limit, cumulative limit and token balance. State changes precede token transfer; a failed transfer rolls all accounting back. OpenZeppelin SafeERC20 and ReentrancyGuard protect external transfers. Input recipients exclude zero and the vault itself; lists are capped at 100. Solidity 0.8 checked arithmetic is used. No arbitrary call, delegatecall, upgrade, cross-chain bridge or gas sponsorship interface exists.
+## Per-agent capability
 
-Risks: owner key compromise gives full control; agent compromise can spend its authorized remaining budget to permitted recipients. Prompt injection is bounded financially but cannot establish service quality or prevent an agent from wasting its valid budget. USDC interface/admin behavior and chain RPC remain external dependencies. A spoofed website, wallet provider or RPC can mislead users; verify explorer receipts independently. Revocation is effective only after chain inclusion, and cannot reverse completed payments. There is no owner recovery, multisig provisioning, account abstraction, off-chain invoice attestation or merchant delivery guarantee. Timestamp-based expiry uses chain time.
+Lifetime budget (`maxTotal`, includes gas top-ups), per-payment limit, daily limit (resets each UTC day), gas allowance, expiry, versioned recipient allowlist and optional registry use. Updates preserve lifetime spend, gas drawn and used invoice hashes; each authorization starts a new recipient version. Budgets are ceilings, not reserved balances; several agents compete for the vault balance.
 
-Use dedicated keys for the Arc owner and agent. Arc signing runs in the wallet or dedicated server CLI; no new remote signing API accepts arbitrary requests. Keys are absent from browser code and public env names. Local testing uses disposable generated accounts. Never expose a funded local Ganache service publicly.
+`pay()` checks, in order: active, not expired, recipient allowed, non-zero amount and ID, invoice unused, per-payment limit, lifetime budget, daily limit, balance. `topUpGas()` checks gas allowance, then the same active, expiry, lifetime, daily and balance rules, and pays only the agent itself. State changes precede the token transfer; a failed transfer rolls all accounting back. OpenZeppelin SafeERC20 and ReentrancyGuard protect transfers. Recipients exclude zero, the vault and the agent itself; lists are capped at 100. Lowered limits cannot underflow: if spend already exceeds a new limit, further spending is refused.
 
-The UI's generic vault address input validates token and contract reads but is not a source-verification tool; only use vaults created by a independently verified project factory. The readiness checker verifies a factory creation input and registered vault, but current UI functionality and program acceptance remain manual checks. Source verification and an independent audit have not been completed.
+## What this bounds, and what it does not
 
+- A prompt-injected agent or a stolen agent key can spend at most the remaining budget, at most the daily limit per day, only to allowed recipients. The daily limit gives the owner time to notice an alert and revoke.
+- It cannot judge service quality: an allowed merchant can still sell poor data. Invoice hashes bind each payment to one order; escrow (pay on delivery) is planned as a separate contract.
+- An approved registry merchant is trusted by every vault that opts in. Opt in only to registries you trust.
+- Owner key compromise gives full control of that vault; use a multisig owner for larger balances.
+- Revocation takes effect after chain inclusion and cannot reverse completed payments.
+- USDC behaviour, Arc RPC and the explorer are external dependencies. Verify receipts on the explorer.
+
+## HTTP 402 verification
+
+The API accepts a payment proof only if the transaction succeeded, contains a USDC `Transfer` from a vault to the merchant for at least the price, the vault was created by the configured factory, and the vault's `Paid` event carries `paymentId == keccak256(invoice)` for this resource. Invoices expire after 5 minutes. A proof can unlock its own resource until the invoice expires.
+
+## Not yet done
+
+No independent audit. Vaults hold Arc USDC only (fee-on-transfer tokens are rejected by the deposit balance check).

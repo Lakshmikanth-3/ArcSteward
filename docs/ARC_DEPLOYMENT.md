@@ -1,6 +1,6 @@
 # Arc deployment
 
-Status: real Arc testnet factory/vault deployment and 0.01 USDC agent payment completed on October 14, 2026. Mainnet deployment, public hosting and source verification remain pending. Testnet evidence is in `contracts/arc/deployments/5042002*.json`; it does not establish mainnet readiness.
+Status: v2 contracts (vault, factory, merchant registry) deployed and tested on Arc testnet; see `ARC_TESTNET_REPORT.md`. `pnpm arc:deploy` deploys the factory and the merchant registry together.
 
 ## Setup and local checks
 
@@ -88,13 +88,7 @@ Default reads state. Execution simulates, signs, waits and rereads the remaining
 
 Use `contracts/arc/artifacts/solc-input.json` for source verification; compilation embeds all imported OpenZeppelin sources from the pinned package. Submit standard JSON, compiler `v0.8.30`, optimizer 200 and EVM paris to the official explorer's verification interface where available. Constructor ABI encodes the USDC address for factory, and owner/token for vault. A factory-created vault may require explorer contract-creation tracing for its constructor metadata. Save verification links only after confirmed success. Local compilation is not source verification.
 
-Copy `docs/arc-evidence.example.json` to `docs/arc-evidence.json` and enter actual factory, vault, deployment/payment hashes, working public `/arc` URL and builder profile. Then:
-
-```sh
-pnpm arc:readiness --online
-```
-
-This independently checks chain 5042, a successful deployment whose input matches the local compiled creation code, factory token, registered vault, a positive `Paid` event in a successful receipt and an accessible console URL. It still marks reviewer flow and program eligibility as manual and exits nonzero. `ARC_READINESS.json` distinguishes PASS/MISSING/FAIL/MANUAL. An HTTP 200 response does not prove that the full wallet journey works.
+After deployment, run `pnpm arc:testnet:e2e` (testnet) or the browser walkthrough against the live site to confirm the full flow.
 
 ## Troubleshooting and emergency recovery
 
