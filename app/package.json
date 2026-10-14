@@ -8,6 +8,7 @@
     "arc:test:ui": "tsx --test scripts/arc-ui.test.ts",
     "arc:testnet:setup": "tsx scripts/arc-testnet-setup.ts",
     "arc:testnet:run": "tsx --env-file=.env.arc-testnet scripts/arc-testnet-run.ts",
+    "arc:testnet:e2e": "tsx --env-file=.env.arc-testnet --test scripts/arc-testnet-e2e.test.ts",
     "arc:testnet:enforcement": "tsx --env-file=.env.arc-testnet scripts/arc-testnet-enforcement.ts",
     "arc:test": "node --test scripts/arc-contract.test.mjs && tsx --test src/lib/arc/config.test.ts scripts/arc-sdk.test.ts",
     "arc:preflight": "tsx scripts/arc-deploy.ts",
