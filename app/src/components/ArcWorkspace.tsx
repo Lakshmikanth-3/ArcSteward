@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ArrowUpRight, Blocks, FlaskConical, Code2, LayoutDashboard, Menu, ShieldCheck, X } from 'lucide-react';
+import { ArrowUpRight, Blocks, Bot, FlaskConical, Code2, LayoutDashboard, Menu, ShieldCheck, X } from 'lucide-react';
 import { network } from '@/lib/arc/config';
 import { repositoryUrl } from '@/lib/arc/project';
 
@@ -12,6 +12,7 @@ const navigation = [
   { href: '/testnet', label: 'Testnet', icon: FlaskConical },
   { href: '/infrastructure', label: 'Infrastructure', icon: Blocks },
   { href: '/security', label: 'Security proof', icon: ShieldCheck },
+  { href: '/developers', label: 'Developers', icon: Bot },
 ];
 
 export default function ArcWorkspace({ children }: { children: React.ReactNode }) {

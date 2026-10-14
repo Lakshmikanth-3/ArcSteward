@@ -8,6 +8,8 @@ const reasons: Record<string, string> = {
   RecipientDenied: 'This recipient is not permitted by the capability.',
   PaymentLimit: 'The amount exceeds the per-payment limit.',
   TotalLimit: 'The amount exceeds the remaining lifetime budget.',
+  DailyLimit: 'The amount exceeds the remaining daily limit. It resets at 00:00 UTC.',
+  GasLimit: 'The amount exceeds the remaining gas allowance.',
   InsufficientFunds: 'The vault has insufficient USDC.',
   DuplicatePayment: 'This payment ID has already been used. Inspect the earlier receipt.',
   InvalidInput: 'Invalid input. Check amounts, addresses, expiry and recipient list.',

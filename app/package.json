@@ -7,15 +7,12 @@
     "arc:compile": "node scripts/arc-compile.mjs",
     "arc:test:ui": "tsx --test scripts/arc-ui.test.ts",
     "arc:testnet:setup": "tsx scripts/arc-testnet-setup.ts",
-    "arc:testnet:run": "tsx --env-file=.env.arc-testnet scripts/arc-testnet-run.ts",
     "arc:testnet:e2e": "tsx --env-file=.env.arc-testnet --test scripts/arc-testnet-e2e.test.ts",
     "arc:testnet:browser": "tsx --env-file=.env.arc-testnet --test scripts/arc-browser-testnet.test.ts",
-    "arc:testnet:enforcement": "tsx --env-file=.env.arc-testnet scripts/arc-testnet-enforcement.ts",
     "arc:test": "node --test scripts/arc-contract.test.mjs scripts/arc-adversarial.test.mjs && tsx --test src/lib/arc/config.test.ts scripts/arc-sdk.test.ts",
     "arc:preflight": "tsx scripts/arc-deploy.ts",
     "arc:deploy": "tsx scripts/arc-deploy.ts --broadcast",
     "arc:smoke": "tsx scripts/arc-smoke.ts",
-    "arc:readiness": "tsx scripts/arc-readiness.ts",
     "arc:agent": "tsx agent/arc-runner.ts",
     "dev": "next dev",
     "build": "next build",
@@ -23,7 +20,11 @@
     "lint": "eslint",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "test": "pnpm arc:test"
+    "test": "pnpm arc:test",
+    "arc:testnet:x402": "tsx --env-file=.env.arc-testnet --test scripts/arc-x402.test.ts",
+    "arc:testnet:demo-setup": "tsx --env-file=.env.arc-testnet scripts/arc-testnet-demo-setup.ts",
+    "arc:ai-agent": "tsx agent/ai-agent.ts",
+    "arc:watch": "tsx agent/watch.ts"
   },
   "dependencies": {
     "lucide-react": "^1.20.0",
