@@ -6,7 +6,7 @@ test('Arc console states missing evidence and disables owner operations while di
   await expect(page.getByText('Disconnected', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Approve exact amount and deposit' })).toBeDisabled();
   await expect(page.getByRole('button', { name: 'Authorize / update' })).toBeDisabled();
-  await expect(page.getByRole('button', { name: 'Simulate and pay USDC' })).toBeDisabled();
+  await expect(page.getByRole('button', { name: 'Pay USDC' })).toBeDisabled();
   await expect(page.getByText(/Mainnet readiness requires verified deployment/)).toBeVisible();
   await expect(page.getByText(/No events in the loaded window/)).toBeVisible();
   await page.getByRole('button', { name: 'Connect EVM wallet' }).click();

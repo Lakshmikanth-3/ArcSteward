@@ -81,8 +81,8 @@ test('browser owner creates/funds vault, authorizes agent; agent pays; owner rev
     await expect(page.getByRole('status')).toContainText('Wallet connected');
     await page.getByLabel('Deposit / withdrawal / payment amount (USDC)').fill('0.01');
     await page.getByLabel('Payment recipient').fill(recipient.address);
-    await page.getByLabel('Unique invoice / payment ID').fill('browser-local-demo');
-    await page.getByRole('button', { name: 'Simulate and pay USDC' }).click();
+    await page.getByLabel('Unique invoice / payment ID').fill('browser-local-payment');
+    await page.getByRole('button', { name: 'Pay USDC' }).click();
     await expect(page.getByText(/Remaining: 0.09 USDC/)).toBeVisible({ timeout: 20000 });
     const vault = await p.readContract({ address: factory, abi: factoryAbi, functionName: 'vaultOf', args: [owner.address] });
     assert.equal((await p.readContract({ address: vault, abi: vaultAbi, functionName: 'capabilities', args: [agent.address] }))[2], 10000n);
@@ -96,7 +96,7 @@ test('browser owner creates/funds vault, authorizes agent; agent pays; owner rev
     await page.getByRole('button', { name: 'Connect EVM wallet' }).click();
     await expect(page.getByRole('status')).toContainText('Wallet connected');
     await page.getByLabel('Unique invoice / payment ID').fill('browser-revoked');
-    await page.getByRole('button', { name: 'Simulate and pay USDC' }).click();
+    await page.getByRole('button', { name: 'Pay USDC' }).click();
     await expect(page.getByRole('status')).toContainText('Unauthorized', { timeout: 20000 });
     await page.screenshot({ path: '../../arc-local-console.png', fullPage: true });
   } finally { await browser?.close(); child?.kill(); await server.close(); }

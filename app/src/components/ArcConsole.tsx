@@ -149,7 +149,7 @@ export default function ArcConsole({ networkName, rpcUrl, factoryAddress = '', i
     </div></section>
     <section id="arc-payments"><div className="arc-panel-head"><span className="arc-panel-icon"><Send size={18} /></span><div><h2>Execute a payment</h2><p>04 / Sign with the authorized agent wallet</p></div></div><div className="arc-fields"><p>Connect the authorized agent wallet, load the vault and use a unique payment ID. A server agent can use the dedicated Arc SDK/CLI. Payment uses the USDC amount entered in the vault panel.</p>
       {field('Payment recipient', recipient, setRecipient)} {field('Unique invoice / payment ID', paymentId, setPaymentId)}
-      {button('Simulate and pay USDC', () => mutate('pay'), !account || wrongChain || !vault)}
+      {button('Pay USDC', () => mutate('pay'), !account || wrongChain || !vault)}
     </div></section></div></div>
     <section id="arc-history"><div className="arc-panel-head"><span className="arc-panel-icon"><History size={18} /></span><div><h2>Contract event history</h2><p>Confirmed activity, read directly from Arc</p></div></div><p>Actual logs only. Loaded from block {historyFrom === undefined ? 'unknown' : String(historyFrom)}; amounts in event details are six-decimal integer units.</p>
       {history.length === 0 ? <div className="arc-empty"><History size={24} /><strong>No events loaded</strong><p>Load a vault and refresh its on-chain state to inspect activity.</p></div> : history.map((row, i) => <div key={`${row.hash}-${i}`} className="arc-event"><a href={`${chain.blockExplorers.default.url}/tx/${row.hash}`} target="_blank" rel="noreferrer">{row.event} · block {row.block} ↗</a><pre>{row.detail}</pre></div>)}

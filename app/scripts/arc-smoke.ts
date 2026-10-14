@@ -33,7 +33,7 @@ async function main() {
   if (!process.argv.includes('--execute')) return;
   if (chain.id === 5042 && process.env.ARC_MAINNET_CONFIRM !== 'I_CONFIRM_MAINNET_SPEND') throw new Error('Separate mainnet confirmation required');
   // Fresh vault only: avoid silently overriding an existing user capability.
-  if (!/^0x0{40}$/i.test(await p.readContract({ address: factory, abi: factoryAbi, functionName: 'vaultOf', args: [owner.address] }))) throw new Error('Use a fresh dedicated smoke owner, or perform the demo manually');
+  if (!/^0x0{40}$/i.test(await p.readContract({ address: factory, abi: factoryAbi, functionName: 'vaultOf', args: [owner.address] }))) throw new Error('Use a fresh dedicated smoke owner, or perform the run manually');
   const wallet = createWalletClient({ account: owner, chain, transport });
   const receipts: Hash[] = [];
   async function confirm(hash: Hash) { receipts.push(hash); console.log(`Submitted ${hash}`); const r = await p.waitForTransactionReceipt({ hash, timeout: 90000 }); if (r.status !== 'success') throw new Error('Smoke transaction reverted'); }
@@ -50,7 +50,7 @@ async function main() {
   const payment = await new ArcAgent(agent, vault, net, process.env.ARC_RPC_URL).pay(recipient, amount, keccak256(toHex(idText)));
   const revoke = await p.simulateContract({ account: owner, address: vault, abi: vaultAbi, functionName: 'revoke', args: [agent.address] });
   await confirm(await wallet.writeContract(revoke.request));
-  // Demonstrate on-chain authorization rejection after revocation without broadcasting a failure.
+  // Verify on-chain authorization rejection after revocation without broadcasting a failure.
   let rejected = false;
   try { await p.simulateContract({ account: agent, address: vault, abi: vaultAbi, functionName: 'pay', args: [recipient, units, keccak256(toHex(`${idText}-revoked`))] }); } catch (error) {
     const revert = error instanceof BaseError ? error.walk(e => e instanceof ContractFunctionRevertedError) : undefined;

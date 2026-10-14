@@ -9,7 +9,7 @@ import { repositoryUrl } from '@/lib/arc/project';
 
 const navigation = [
   { href: '/arc', label: 'Vault workspace', icon: LayoutDashboard },
-  { href: '/testnet', label: 'Testnet demo', icon: FlaskConical },
+  { href: '/testnet', label: 'Testnet', icon: FlaskConical },
   { href: '/infrastructure', label: 'Infrastructure', icon: Blocks },
   { href: '/submission', label: 'Grant readiness', icon: ShieldCheck },
 ];
