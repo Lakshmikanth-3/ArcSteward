@@ -10,6 +10,19 @@ import { paymentError } from '@/lib/arc/errors';
 
 type Injected = EIP1193Provider & { on?: (event: string, listener: () => void) => void; removeListener?: (event: string, listener: () => void) => void };
 const provider = () => (window as unknown as { ethereum?: Injected }).ethereum;
+const short = (a: unknown) => typeof a === 'string' ? `${a.slice(0, 6)}…${a.slice(-4)}` : '';
+const usdc = (v: unknown) => `${displayUsdc(BigInt(v as bigint))} USDC`;
+function describeEvent(name: string, a: Record<string, unknown>) {
+  switch (name) {
+    case 'Funded': return `${short(a.sender)} deposited ${usdc(a.amount)}`;
+    case 'Authorized': return `Agent ${short(a.agent)} may spend ${usdc(a.maxTotal)} total, ${usdc(a.maxPayment)} per payment, until ${new Date(Number(a.expiresAt) * 1000).toLocaleString()} · ${(a.recipients as unknown[]).length} recipient(s)`;
+    case 'Paid': return `Agent ${short(a.agent)} paid ${usdc(a.amount)} to ${short(a.recipient)} · ${usdc(a.remainingBudget)} budget left`;
+    case 'Revoked': return `Agent ${short(a.agent)} revoked`;
+    case 'Withdrawn': return `${usdc(a.amount)} withdrawn to owner ${short(a.recipient)}`;
+    default: return name;
+  }
+}
+
 export default function ArcConsole({ networkName, rpcUrl, factoryAddress = '', initialVault = '', initialAgent = '' }: { networkName: 'mainnet' | 'testnet'; rpcUrl?: string; factoryAddress?: string; initialVault?: string; initialAgent?: string }) {
   const chain = network(networkName);
   const rpc = rpcUrl ?? chain.rpcUrls.default.http[0];
@@ -82,7 +95,7 @@ export default function ArcConsole({ networkName, rpcUrl, factoryAddress = '', i
       const to = from + 4999n < latest ? from + 4999n : latest;
       logs.push(...await client.getContractEvents({ address: v, abi: vaultAbi, fromBlock: from, toBlock: to }));
     }
-    const rows = logs.reverse().map(log => ({ hash: log.transactionHash, block: String(log.blockNumber), event: log.eventName, detail: JSON.stringify(log.args, (_, value) => typeof value === 'bigint' ? String(value) : value) }));
+    const rows = logs.reverse().map(log => ({ hash: log.transactionHash, block: String(log.blockNumber), event: log.eventName, detail: describeEvent(log.eventName, log.args as Record<string, unknown>) }));
     setHistory(old => before === undefined ? rows : [...old, ...rows]); setHistoryFrom(start);
   }
   async function mutate(fn: 'deposit' | 'withdraw' | 'revoke' | 'authorize' | 'pay') {
@@ -151,8 +164,8 @@ export default function ArcConsole({ networkName, rpcUrl, factoryAddress = '', i
       {field('Payment recipient', recipient, setRecipient)} {field('Unique invoice / payment ID', paymentId, setPaymentId)}
       {button('Pay USDC', () => mutate('pay'), !account || wrongChain || !vault)}
     </div></section></div></div>
-    <section id="arc-history"><div className="arc-panel-head"><span className="arc-panel-icon"><History size={18} /></span><div><h2>Contract event history</h2><p>Confirmed activity, read directly from Arc</p></div></div><p>Actual logs only. Loaded from block {historyFrom === undefined ? 'unknown' : String(historyFrom)}; amounts in event details are six-decimal integer units.</p>
-      {history.length === 0 ? <div className="arc-empty"><History size={24} /><strong>No events loaded</strong><p>Load a vault and refresh its on-chain state to inspect activity.</p></div> : history.map((row, i) => <div key={`${row.hash}-${i}`} className="arc-event"><a href={`${chain.blockExplorers.default.url}/tx/${row.hash}`} target="_blank" rel="noreferrer">{row.event} · block {row.block} ↗</a><pre>{row.detail}</pre></div>)}
+    <section id="arc-history"><div className="arc-panel-head"><span className="arc-panel-icon"><History size={18} /></span><div><h2>Contract event history</h2><p>Confirmed activity, read directly from Arc</p></div></div><p>Loaded from block {historyFrom === undefined ? 'unknown' : String(historyFrom)}.</p>
+      {history.length === 0 ? <div className="arc-empty"><History size={24} /><strong>No events loaded</strong><p>Load a vault and refresh its on-chain state to inspect activity.</p></div> : history.map((row, i) => <div key={`${row.hash}-${i}`} className="arc-event"><a href={`${chain.blockExplorers.default.url}/tx/${row.hash}`} target="_blank" rel="noreferrer">{row.event} · block {row.block} ↗</a><p className="arc-event-detail">{row.detail}</p></div>)}
       {historyFrom !== undefined && historyFrom > 0n && button('Load earlier events', () => refresh(historyFrom - 1n))}
     </section>
   </div>;
