@@ -35,21 +35,7 @@ Velo402 was built and submitted to [Arc Microgrants](https://dorahacks.io/hackat
 | Not testnet-only | Mainnet records alongside testnet test runs | [5042-setup.json](contracts/arc/deployments/5042-setup.json) · [AI agent transcript](contracts/arc/deployments/5042-ai-agent-run.log) |
 | Not previously funded by Circle or Arc | First submission of this project | Declared in the submission |
 
-### How it was built and shipped
 
-```mermaid
-flowchart LR
-  A[Design: vault policy model] --> B[Solidity contracts + local tests]
-  B --> C[Randomized attacker test<br/>3 seeds, 0 leaks]
-  C --> D[Deploy to Arc testnet]
-  D --> E[Testnet end-to-end<br/>15/15 real txs]
-  E --> F[Web console, SDK,<br/>HTTP 402 API, AI agent]
-  F --> G[Browser tests:<br/>every button + live site]
-  G --> H[pnpm arc:ready<br/>one-command readiness]
-  H --> I[Deploy to Arc mainnet<br/>~0.13 USDC gas]
-  I --> J[Real AI agent pays<br/>on mainnet]
-  J --> K[Demo video + submission]
-```
 
 | Stage | Evidence in this repo |
 | --- | --- |
