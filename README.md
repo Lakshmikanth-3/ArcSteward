@@ -20,6 +20,46 @@
 
 All mainnet records: [`contracts/arc/deployments/5042.json`](contracts/arc/deployments/5042.json), [`5042-setup.json`](contracts/arc/deployments/5042-setup.json) and the AI agent transcript [`5042-ai-agent-run.log`](contracts/arc/deployments/5042-ai-agent-run.log). On mainnet the vault also rejected an injected 5 USDC payment to an attacker (`RecipientDenied`) and an over-limit payment (`PaymentLimit`) without moving funds.
 
+## Built for Arc Microgrants
+
+Velo402 was built and submitted to [Arc Microgrants](https://dorahacks.io/hackathon/arc-microgrants/build), which funds projects that are **deployed and working on Arc mainnet**. Every requirement below links to its proof.
+
+| Program requirement | How Velo402 meets it | Proof |
+| --- | --- | --- |
+| Deployed and working on Arc mainnet | Factory, registry and a funded vault on chain 5042; real agent payments | [Factory](https://explorer.arc.io/address/0x333af5f858a1cc267b6ab16e83bcb2fe28f8b2b1) · [agent payment](https://explorer.arc.io/tx/0xee745efaace3a156f09ae07b4d9e1e47204075d8cf192114c378f01e6ee1eedd) |
+| Live link reviewers can open | Web console defaults to Arc mainnet | https://velo402.vercel.app/arc |
+| Public repo | This repository, MIT licensed | [LICENSE](LICENSE) |
+| Short description and Arc use | Top of this README and the submission answers | [docs/ARC_MICROGRANTS_SUBMISSION.md](docs/ARC_MICROGRANTS_SUBMISSION.md) |
+| Public builder profile | GitHub | https://github.com/Lakshmikanth-3 |
+| Real Arc component, not a mockup | Solidity contracts on Arc, USDC settlement, explorer receipts | [contracts/arc/deployments/5042.json](contracts/arc/deployments/5042.json) |
+| Not testnet-only | Mainnet records alongside testnet test runs | [5042-setup.json](contracts/arc/deployments/5042-setup.json) · [AI agent transcript](contracts/arc/deployments/5042-ai-agent-run.log) |
+| Not previously funded by Circle or Arc | First submission of this project | Declared in the submission |
+
+### How it was built and shipped
+
+```mermaid
+flowchart LR
+  A[Design: vault policy model] --> B[Solidity contracts + local tests]
+  B --> C[Randomized attacker test<br/>3 seeds, 0 leaks]
+  C --> D[Deploy to Arc testnet]
+  D --> E[Testnet end-to-end<br/>15/15 real txs]
+  E --> F[Web console, SDK,<br/>HTTP 402 API, AI agent]
+  F --> G[Browser tests:<br/>every button + live site]
+  G --> H[pnpm arc:ready<br/>one-command readiness]
+  H --> I[Deploy to Arc mainnet<br/>~0.13 USDC gas]
+  I --> J[Real AI agent pays<br/>on mainnet]
+  J --> K[Demo video + submission]
+```
+
+| Stage | Evidence in this repo |
+| --- | --- |
+| Contracts and security tests | [ArcVault.sol](contracts/arc/ArcVault.sol), [arc-contract.test.mjs](app/scripts/arc-contract.test.mjs), [arc-adversarial.test.mjs](app/scripts/arc-adversarial.test.mjs) |
+| Testnet deployment and end-to-end | [5042002.json](contracts/arc/deployments/5042002.json), [5042002-e2e.json](contracts/arc/deployments/5042002-e2e.json), [ARC_TESTNET_REPORT.md](docs/ARC_TESTNET_REPORT.md) |
+| Live-site browser run | [5042002-browser.json](contracts/arc/deployments/5042002-browser.json), [screenshot](contracts/arc/deployments/5042002-browser.png) |
+| Mainnet readiness | [MAINNET_READINESS.md](docs/MAINNET_READINESS.md) |
+| Mainnet deployment and setup | [5042.json](contracts/arc/deployments/5042.json), [5042-setup.json](contracts/arc/deployments/5042-setup.json) |
+| AI agent on mainnet | [5042-ai-agent-run.log](contracts/arc/deployments/5042-ai-agent-run.log) |
+
 ## Demo video (5:22)
 
 Title → the problem (Bybit, about $1.5B, Feb 2025; the Freysa AI agent, about $47K, Nov 2024) → the solution and why the agent cannot overspend → why Arc → **live walkthrough on Arc mainnet** with real USDC (create vault, deposit, authorize with a daily limit, agent pays, three attacks rejected, revoke, withdraw, explorer receipt) → the AI agent paying an HTTP 402 API on mainnet and ignoring a prompt injection → architecture → end. Re-record with `app/scripts/arc-demo-record.ts`.
@@ -29,6 +69,22 @@ Title → the problem (Bybit, about $1.5B, Feb 2025; the Freysa AI agent, about 
 ## The problem
 
 AI agents increasingly need to pay for things: APIs, data, compute, other agents. Today you either give an agent a private key (it can spend everything) or you keep a human in the loop for every payment (it is not autonomous). Prompt injection makes the first option dangerous: one malicious web page or tool result can tell the agent to send funds elsewhere.
+
+- **Bybit, February 2025:** signers were tricked into approving a malicious transaction; about **$1.5 billion** was stolen in one transfer. The keys never leaked; the approval was manipulated.
+- **Freysa AI agent, November 2024:** an agent built never to release its prize pool was talked into it by one message; about **$47,000** left the wallet.
+
+```mermaid
+flowchart LR
+  subgraph Today["Today: two bad options"]
+    K[Agent holds the key] -->|one prompt injection| X[Wallet drained]
+    H[Human approves each payment] --> S[Not autonomous]
+  end
+  subgraph V["Velo402"]
+    A[Agent signs payment] --> C{Vault checks owner policy<br/>on-chain}
+    C -->|all rules pass| P[USDC paid + receipt]
+    C -->|any rule fails| R[Revert, nothing moves]
+  end
+```
 
 ## The solution
 
@@ -68,22 +124,104 @@ The agent signs its own payments, so it stays autonomous. The vault contract che
 
 ## Architecture
 
+```mermaid
+flowchart TB
+  O["Owner wallet<br/>(browser or Safe multisig)"]
+  AG["AI agent<br/>Velo402 SDK, own key"]
+  API["Paid API (HTTP 402)<br/>/api/x402/*"]
+  UI["Web console<br/>velo402.vercel.app"]
+  AL["Alerts<br/>webhook, Telegram, in-app"]
+
+  subgraph ARC["Arc mainnet (chain 5042)"]
+    F["ArcVaultFactory<br/>many vaults per owner"]
+    V["ArcVault<br/>USDC + capability per agent:<br/>budget, per-payment, daily,<br/>recipients, gas allowance, expiry"]
+    R["MerchantRegistry<br/>curated merchants"]
+    U["USDC (ERC-20 + gas token)"]
+    E["Arc RPC / Explorer"]
+  end
+
+  O -- "createVault()" --> F
+  F -- deploys --> V
+  O -- "deposit, authorize, setRecipient,<br/>setRegistry, revoke, withdraw" --> V
+  AG -- "pay(to, amount, invoiceHash)<br/>topUpGas(amount)" --> V
+  V -- "approved?" --> R
+  V -- transfers --> U
+  AG -- "GET, 402, pay, retry with proof" --> API
+  API -- "verify Paid event" --> E
+  V -- "events: Funded, Authorized, Paid,<br/>GasToppedUp, Revoked, Withdrawn" --> E
+  UI -- "reads balances and events" --> E
+  O --> UI
+  E --> AL
 ```
- Owner wallet (browser)                        Agent (server / AI runtime)
-        │  create, deposit, authorize,                │  pay(recipient, amount, invoiceHash)
-        │  setRecipient, setRegistry,                 │  topUpGas(amount)
-        │  revoke, withdraw                           │  signed with the agent's own key (SDK)
-        ▼                                             ▼
- ┌──────────────────────────────────────────────────────────────────┐
- │ ArcVaultFactory ── createVault() ──► ArcVault (many per owner)     │
- │   ArcVault holds USDC and a Capability per agent:                 │
- │   maxTotal · maxPayment · maxPerDay · gasAllowance · expiresAt    │
- │   + versioned recipient allowlist + used invoice hashes           │
- │ MerchantRegistry ── curated merchants vaults can opt into         │
- └──────────────────────────────────────────────────────────────────┘
-        │ events: Funded · Authorized · RecipientSet · Paid · GasToppedUp · Revoked · Withdrawn
-        ▼
- Web console + x402 API (Next.js, viem) · alerts (webhook, Telegram) · Arc explorer
+
+### Working flow: owner, agent and vault
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Owner
+  participant Factory as ArcVaultFactory
+  participant Vault as ArcVault
+  actor Agent as AI agent
+  participant M as Merchant / API
+
+  Owner->>Factory: createVault()
+  Factory-->>Owner: new vault address
+  Owner->>Vault: approve + deposit(USDC)
+  Owner->>Vault: authorize(agent, policy, recipients)
+  Agent->>Vault: pay(merchant, 0.01, invoiceHash)
+  Vault->>Vault: check every rule
+  Vault->>M: transfer 0.01 USDC
+  Vault-->>Agent: Paid event (receipt)
+  Agent->>Vault: pay(attacker, 5, ...) (prompt injection)
+  Vault-->>Agent: revert RecipientDenied, nothing moves
+  Owner->>Vault: revoke(agent)
+  Agent->>Vault: pay(...)
+  Vault-->>Agent: revert Unauthorized
+  Owner->>Vault: withdraw(remaining)
+```
+
+### What `pay()` checks, in order
+
+```mermaid
+flowchart TD
+  S(["pay(recipient, amount, invoiceHash)"]) --> A{capability active?}
+  A -- no --> E1[Unauthorized]
+  A -- yes --> B{not expired?}
+  B -- no --> E2[Expired]
+  B -- yes --> C{recipient allowed?<br/>allowlist or registry}
+  C -- no --> E3[RecipientDenied]
+  C -- yes --> D{amount greater than 0 and<br/>invoice unused?}
+  D -- no --> E4[InvalidInput / DuplicatePayment]
+  D -- yes --> F{amount ≤ per-payment limit?}
+  F -- no --> E5[PaymentLimit]
+  F -- yes --> G{amount ≤ remaining budget?}
+  G -- no --> E6[TotalLimit]
+  G -- yes --> H{amount ≤ remaining today?}
+  H -- no --> E7[DailyLimit]
+  H -- yes --> I{amount ≤ vault balance?}
+  I -- no --> E8[InsufficientFunds]
+  I -- yes --> OK([record spend, transfer USDC, emit Paid])
+```
+
+### HTTP 402 pay-per-request flow
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant A as AI agent (SDK)
+  participant API as Paid API
+  participant V as ArcVault
+  participant Arc as Arc RPC
+
+  A->>API: GET /api/x402/arc-stats
+  API-->>A: 402 Payment Required {payTo, price, invoice}
+  A->>V: pay(payTo, price, keccak256(invoice))
+  V-->>A: tx hash (Paid event)
+  A->>API: GET + X-PAYMENT {txHash, invoice}
+  API->>Arc: read receipt: Paid from a factory vault,<br/>to payTo, amount >= price, invoice matches
+  Arc-->>API: verified
+  API-->>A: 200 OK + data
 ```
 
 ### Internal components
@@ -97,8 +235,8 @@ The agent signs its own payments, so it stays autonomous. The vault contract che
 | [`app/src/app/api/x402`](app/src/app/api/x402) | Pay-per-request API with on-chain payment verification. |
 | [`app/agent/arc-runner.ts`](app/agent/arc-runner.ts) | CLI agent that uses the SDK. Mainnet spends need an explicit confirmation variable. |
 | [`app/src/components/ArcConsole.tsx`](app/src/components/ArcConsole.tsx) | Owner and agent console: connect wallet, create/fund vault, authorize, pay, revoke, event history. |
-| [`app/src/app/security`](app/src/app/security/page.tsx) | Threat model and live testnet receipts. |
-| [`app/scripts/arc-deploy.ts`](app/scripts/arc-deploy.ts) | Preflight and deploy of the factory. |
+| [`app/src/app/security`](app/src/app/security/page.tsx) | Threat model with mainnet and testnet receipts. |
+| [`app/scripts/arc-deploy.ts`](app/scripts/arc-deploy.ts) · [`arc-mainnet-setup.ts`](app/scripts/arc-mainnet-setup.ts) | Preflight, deploy of factory and registry, mainnet vault and agent setup. |
 | [`app/scripts/*.test.*`](app/scripts) | Contract, adversarial, SDK, UI and live testnet tests. |
 
 ### External dependencies
