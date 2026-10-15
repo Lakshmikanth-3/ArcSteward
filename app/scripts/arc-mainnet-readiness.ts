@@ -47,6 +47,7 @@ async function main() {
   // 2. Contract security (local EVM)
   for (const seed of ['402', '7', '99991']) run(`Contract + attacker tests (seed ${seed})`, 'pnpm -s arc:test', { ARC_FUZZ_SEED: seed });
   run('Browser UI on local chain', 'pnpm -s arc:test:ui');
+  run('Every console control and page link (local chain)', 'npx tsx --test scripts/arc-ui-full.test.ts');
 
   // 3. Real Arc testnet
   run('Testnet end-to-end (real transactions)', 'npx tsx --test scripts/arc-testnet-e2e.test.ts', T);

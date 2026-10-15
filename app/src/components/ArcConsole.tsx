@@ -84,7 +84,7 @@ export default function ArcConsole({ networkName, rpcUrl, factoryAddress = '', i
   }, [walletId, wallets.length]);
   // Live in-app alerts: poll the vault while a vault is loaded.
   useEffect(() => {
-    if (!vault || !historyFrom) return;
+    if (!vault || historyFrom === undefined) return;
     const t = setInterval(() => { void loadLogs(undefined, true).catch(() => {}); }, 15000);
     return () => clearInterval(t);
   // eslint-disable-next-line react-hooks/exhaustive-deps

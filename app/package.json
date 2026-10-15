@@ -25,7 +25,8 @@
     "arc:testnet:demo-setup": "tsx --env-file=.env.arc-testnet scripts/arc-testnet-demo-setup.ts",
     "arc:ai-agent": "tsx agent/ai-agent.ts",
     "arc:watch": "tsx agent/watch.ts",
-    "arc:ready": "tsx scripts/arc-mainnet-readiness.ts"
+    "arc:ready": "tsx scripts/arc-mainnet-readiness.ts",
+    "arc:test:ui-full": "tsx --test scripts/arc-ui-full.test.ts"
   },
   "dependencies": {
     "lucide-react": "^1.20.0",
