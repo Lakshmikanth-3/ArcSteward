@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowUpRight, Bug, FileCheck2, KeyRound, Lock, ShieldCheck, Workflow } from 'lucide-react';
 import { repositoryUrl } from '@/lib/arc/project';
 import deployment from '@/lib/arc/testnet-deployment.json';
+import mainnet from '@/lib/arc/mainnet-deployment.json';
 
 const explorer = 'https://explorer.testnet.arc.io/tx/';
 
@@ -47,6 +48,9 @@ export default function SecurityPage() {
       </ol></section>
       <div className="arc-panel-stack">
         <section><div className="arc-panel-head"><span className="arc-panel-icon"><Workflow size={18} /></span><div><h2>Adversarial invariant test</h2><p>scripts/arc-adversarial.test.mjs</p></div></div><p>A simulated attacker sends hundreds of random transactions: oversized amounts, foreign recipients, replayed IDs, owner-only calls, time jumps, revocations. After every round the test checks that on-chain spend equals the sum of permitted payments, never exceeds the budget, and the attacker and agent hold zero USDC.</p></section>
+        <section><div className="arc-panel-head"><span className="arc-panel-icon"><FileCheck2 size={18} /></span><div><h2>Arc mainnet receipts</h2><p>Real USDC, chain 5042</p></div></div><dl className="arc-info-list">
+          {(['deployFactory', 'createVault', 'deposit', 'authorize', 'agentPayment'] as const).map(k => <div key={k}><dt>{k}</dt><dd><a href={`https://explorer.arc.io/tx/${(mainnet.transactions as Record<string, string>)[k]}`} target="_blank" rel="noreferrer">{(mainnet.transactions as Record<string, string>)[k].slice(0, 10)}…{(mainnet.transactions as Record<string, string>)[k].slice(-6)} ↗</a></dd></div>)}
+        </dl></section>
         <section><div className="arc-panel-head"><span className="arc-panel-icon"><FileCheck2 size={18} /></span><div><h2>Live Arc testnet receipts</h2><p>From the latest end-to-end run</p></div></div><dl className="arc-info-list">
           {(['createVault', 'deposit', 'authorize', 'pay', 'revoke', 'withdraw'] as const).filter(k => tx[k]).map(k => <div key={k}><dt>{k}</dt><dd><a href={explorer + tx[k]} target="_blank" rel="noreferrer">{tx[k].slice(0, 10)}…{tx[k].slice(-6)} ↗</a></dd></div>)}
         </dl></section>

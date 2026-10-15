@@ -1,0 +1,24 @@
+{
+  "chainId": 5042,
+  "factory": "0x333af5f858a1cc267b6ab16e83bcb2fe28f8b2b1",
+  "registry": "0x8ab3bc42d0d6630395cc9eea8f44de007efa026f",
+  "merchant": "0x7Afa01D824b12fcD7a1Fe233ae3Ab801B1961B6c",
+  "vault": "0xD0e065D4978F7614C3d6dA5b162fd25ed45c3C8F",
+  "owner": "0xb7C3A085Bc53D1f62689477568F2e16Ad207711b",
+  "agent": "0x08f5e6FC8288cd222260247105a26FF4025962A5",
+  "deploymentHash": "0x4bf4f62ef5104d956e18d37af1e2661e25c982b31b927dbe05742c63d9225f1e",
+  "paymentHash": "0xee745efaace3a156f09ae07b4d9e1e47204075d8cf192114c378f01e6ee1eedd",
+  "transactions": {
+    "deployFactory": "0x4bf4f62ef5104d956e18d37af1e2661e25c982b31b927dbe05742c63d9225f1e",
+    "deployRegistry": "0xa96e8ca5d75647bea750ae2d1ae2bb86f20cb9ac88fc2feaad7aa325bae24cdd",
+    "registerMerchant": "0xaaa60b20b0f83eb85883c921d9ed90ee4a0d324b0a978e3a24538d9813d387a2",
+    "createVault": "0x3c9a9e4b25c6c249d32ee0d9662e0e3e577ac846ef94b2a0a31f62b0c1dae7c5",
+    "approve": "0x36f1fd516be0177e0322b95155a0b1372d0554d4dcbc93ae6efb82437af1be07",
+    "deposit": "0x8ab1dfee57579adcce9c678264e08b96796d0f17b0c380003e4188fd60e1efd6",
+    "setRegistry": "0x7cd446578af65e53163f0b75699369b2456103caef2f8cf42e679981ccab47cc",
+    "authorize": "0xe057d38ad3f9e0ba79e45f2d7b518f05b4241a2d1e68fca424e82ce7e5470f2f",
+    "fundAgentGas": "0xdb939f9420d7ff1202dae8d233eb2a5ba486dda8bf453d384facf4ffedcdfd37",
+    "agentPayment": "0xee745efaace3a156f09ae07b4d9e1e47204075d8cf192114c378f01e6ee1eedd"
+  },
+  "deployedAt": "2026-10-15T01:37:18.970Z"
+}

@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { ArrowUpRight, Blocks, Coins, ExternalLink, GitBranch, ShieldCheck } from 'lucide-react';
 import { network, arcMainnet, arcTestnet, USDC } from '@/lib/arc/config';
 import deployment from '@/lib/arc/testnet-deployment.json';
+import mainnet from '@/lib/arc/mainnet-deployment.json';
 
 export default function InfrastructurePage() {
   const configured = network(process.env.NEXT_PUBLIC_ARC_NETWORK ?? 'mainnet');
@@ -17,7 +18,13 @@ export default function InfrastructurePage() {
       </tbody></table></div></section>
       <section><div className="arc-panel-head"><span className="arc-panel-icon"><GitBranch size={18} /></span><div><h2>The execution path</h2><p>Policies are enforced by Solidity</p></div></div><ol className="arc-flow"><li>Owner creates and funds a dedicated USDC vault.</li><li>Owner grants an agent a budget, recipient allowlist and expiry.</li><li>Agent wallet or server signer submits a payment.</li><li>The vault validates the capability and transfers USDC.</li><li>Receipts and events make the payment independently verifiable.</li></ol><p style={{ marginTop: 18 }}>SafeERC20 handles token transfers. ReentrancyGuard protects execution. See the security proof for the full threat model.</p></section>
       <div className="arc-panel-stack"><section><div className="arc-panel-head"><span className="arc-panel-icon"><Coins size={18} /></span><div><h2>Two interfaces. One balance.</h2><p>Precision is part of payment safety</p></div></div><dl className="arc-info-list"><div><dt>Vault, budgets & payments</dt><dd>6 decimals / ERC-20</dd></div><div><dt>Native gas</dt><dd>18 decimals</dd></div></dl><p>These interfaces represent the same underlying USDC balance. Their values are never added together.</p><div className="arc-divider" /><p>USDC ERC-20 interface</p><code className="arc-address">{USDC}</code></section>
-      <section><div className="arc-panel-head"><span className="arc-panel-icon"><ShieldCheck size={18} /></span><div><h2>Deployment evidence</h2><p>Real Arc execution</p></div></div><dl className="arc-info-list"><div><dt>Testnet factory & vault</dt><dd>Deployed</dd></div><div><dt>Testnet agent payment</dt><dd>0.01 USDC confirmed</dd></div></dl><a href={`https://explorer.testnet.arc.io/tx/${deployment.paymentHash}`} target="_blank" rel="noreferrer">View testnet receipt ↗</a></section></div>
+      <section><div className="arc-panel-head"><span className="arc-panel-icon"><ShieldCheck size={18} /></span><div><h2>Live on Arc mainnet</h2><p>Chain 5042 · verify on the explorer</p></div></div><dl className="arc-info-list">
+        <div><dt>ArcVaultFactory</dt><dd><a href={`https://explorer.arc.io/address/${mainnet.factory}`} target="_blank" rel="noreferrer">{mainnet.factory.slice(0, 10)}…{mainnet.factory.slice(-6)} ↗</a></dd></div>
+        <div><dt>MerchantRegistry</dt><dd><a href={`https://explorer.arc.io/address/${mainnet.registry}`} target="_blank" rel="noreferrer">{mainnet.registry.slice(0, 10)}…{mainnet.registry.slice(-6)} ↗</a></dd></div>
+        <div><dt>Demo vault</dt><dd><a href={`https://explorer.arc.io/address/${mainnet.vault}`} target="_blank" rel="noreferrer">{mainnet.vault.slice(0, 10)}…{mainnet.vault.slice(-6)} ↗</a></dd></div>
+        <div><dt>AI agent payment, 0.01 USDC</dt><dd><a href={`https://explorer.arc.io/tx/${mainnet.paymentHash}`} target="_blank" rel="noreferrer">{mainnet.paymentHash.slice(0, 10)}…{mainnet.paymentHash.slice(-6)} ↗</a></dd></div>
+        <div><dt>Testnet test vault</dt><dd><a href={`https://explorer.testnet.arc.io/tx/${deployment.paymentHash}`} target="_blank" rel="noreferrer">Latest testnet receipt ↗</a></dd></div>
+      </dl></section></div>
       <section className="full-width"><div className="arc-panel-head"><span className="arc-panel-icon"><ExternalLink size={18} /></span><div><h2>Explore the infrastructure</h2><p>Official references and the working console</p></div></div><div className="arc-actions"><Link href="/arc" className="btn">Open vault workspace</Link><a className="btn secondary" href="https://docs.arc.io/arc/references/connect-to-arc" target="_blank" rel="noreferrer">Arc network documentation ↗</a><a className="btn secondary" href="https://docs.arc.io/arc/references/contract-addresses" target="_blank" rel="noreferrer">USDC contract reference ↗</a></div></section>
     </div>
   </div>;

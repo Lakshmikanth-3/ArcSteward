@@ -6,7 +6,8 @@
 import { createPublicClient, http, erc20Abi, parseEventLogs, keccak256, toHex, type Address, type Hex } from 'viem';
 import { network, USDC, address, displayUsdc } from './config';
 import { vaultAbi, factoryAbi } from './abi';
-import deployment from './testnet-deployment.json';
+import testnetDeployment from './testnet-deployment.json';
+import mainnetDeployment from './mainnet-deployment.json';
 
 export type Resource = { price: bigint; description: string };
 export const resources: Record<string, Resource> = {
@@ -15,27 +16,31 @@ export const resources: Record<string, Resource> = {
 };
 const INVOICE_TTL = 300; // seconds a 402 challenge stays payable
 
-export function merchantConfig() {
-  const net = (process.env.X402_NETWORK ?? 'testnet') as 'mainnet' | 'testnet';
+export type Net = 'mainnet' | 'testnet';
+/** Network for a request: ?network=mainnet|testnet, else X402_NETWORK, else testnet. */
+export const requestNetwork = (q: string | null): Net => q === 'mainnet' || q === 'testnet' ? q : (process.env.X402_NETWORK === 'mainnet' ? 'mainnet' : 'testnet');
+export function merchantConfig(net: Net = requestNetwork(null)) {
   const chain = network(net);
-  const factory = address(net === 'testnet' ? process.env.NEXT_PUBLIC_ARC_TESTNET_FACTORY_ADDRESS ?? deployment.factory : process.env.NEXT_PUBLIC_ARC_FACTORY_ADDRESS ?? '');
-  const payTo = address(process.env.X402_PAY_TO ?? deployment.merchant);
+  const d = net === 'mainnet' ? mainnetDeployment : testnetDeployment;
+  const factory = address((net === 'testnet' ? process.env.NEXT_PUBLIC_ARC_TESTNET_FACTORY_ADDRESS : process.env.NEXT_PUBLIC_ARC_FACTORY_ADDRESS) ?? d.factory);
+  const payTo = address(d.merchant);
   const rpc = net === 'testnet' ? process.env.NEXT_PUBLIC_ARC_TESTNET_RPC_URL : process.env.NEXT_PUBLIC_ARC_RPC_URL;
   return { net, chain, factory, payTo, client: createPublicClient({ chain, transport: http(rpc ?? chain.rpcUrls.default.http[0], { timeout: 15000 }) }) };
 }
 
-export function challenge(resource: string, url: string) {
-  const { net, payTo } = merchantConfig();
+export function challenge(resource: string, url: string, net?: Net) {
+  const { payTo } = merchantConfig(net);
+  net = net ?? requestNetwork(null);
   const r = resources[resource];
-  const invoice = `velo402:${resource}:${crypto.randomUUID()}:${Math.floor(Date.now() / 1000) + INVOICE_TTL}`;
+  const invoice = `velo402:${net}:${resource}:${crypto.randomUUID()}:${Math.floor(Date.now() / 1000) + INVOICE_TTL}`;
   return { x402Version: 1 as const, error: 'Payment required', accepts: [{ scheme: 'velo402-vault' as const, network: net === 'mainnet' ? 'arc' : 'arc-testnet', payTo, maxAmountRequired: String(r.price), asset: USDC, resource: url, description: `${r.description} · ${displayUsdc(r.price)} USDC`, invoice }] };
 }
 
-export async function verifyPayment(resource: string, txHash: Hex, invoice: string): Promise<{ ok: true; vault: Address; agent: Address; amount: bigint } | { ok: false; reason: string }> {
-  const [scheme, res, , expiry] = invoice.split(':');
-  if (scheme !== 'velo402' || res !== resource) return { ok: false, reason: 'Invoice is for another resource' };
+export async function verifyPayment(resource: string, txHash: Hex, invoice: string, net: Net = requestNetwork(null)): Promise<{ ok: true; vault: Address; agent: Address; amount: bigint } | { ok: false; reason: string }> {
+  const [scheme, invNet, res, , expiry] = invoice.split(':');
+  if (scheme !== 'velo402' || invNet !== net || res !== resource) return { ok: false, reason: 'Invoice is for another resource or network' };
   if (!(Number(expiry) > Date.now() / 1000)) return { ok: false, reason: 'Invoice expired; request a new one' };
-  const { client, factory, payTo } = merchantConfig();
+  const { client, factory, payTo } = merchantConfig(net);
   const price = resources[resource].price;
   const receipt = await client.getTransactionReceipt({ hash: txHash }).catch(() => null);
   if (!receipt || receipt.status !== 'success') return { ok: false, reason: 'Payment transaction not found or failed' };
@@ -51,8 +56,8 @@ export async function verifyPayment(resource: string, txHash: Hex, invoice: stri
 }
 
 /** The paid content. Real chain data; the article is deliberately hostile to test agents. */
-export async function content(resource: string) {
-  const { client, chain } = merchantConfig();
+export async function content(resource: string, net?: Net) {
+  const { client, chain } = merchantConfig(net);
   if (resource === 'arc-stats') {
     const [block, gasPrice, supply] = await Promise.all([client.getBlock(), client.getGasPrice(), client.readContract({ address: USDC, abi: erc20Abi, functionName: 'totalSupply' })]);
     return { network: chain.name, chainId: chain.id, block: String(block.number), timestamp: new Date(Number(block.timestamp) * 1000).toISOString(), gasPriceGwei: Number(gasPrice) / 1e9, usdcTotalSupply: displayUsdc(supply) };
