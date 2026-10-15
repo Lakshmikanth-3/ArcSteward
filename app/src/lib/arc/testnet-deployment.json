@@ -7,28 +7,28 @@
   "owner": "0x816326154e067B3A69648432c4292C51827BbfB0",
   "agent": "0x8c6aB528531EEBEAE0CA11EAEc46da55A4D213ba",
   "deploymentHash": "0x66af367e54a312c7300de6562f4a3a9b2442f4a306c06eaf644c9c95cade97fb",
-  "paymentHash": "0x7bb613be01f26097988ba3a3dfee5c6c8195d24aa7eab051954b0194659fcaca",
+  "paymentHash": "0x101df4c59196712d17be971b37fe588b54bed35b7aa86db4e17c8823c8eeb454",
   "e2e": {
-    "vault": "0xA30B080Cf5b3e496229E7FB228a018d2f64ef14a",
+    "vault": "0xFB51aEbAa5A96906E70620b2B57dDf7a860e27a8",
     "transactions": {
-      "fundOwner": "0x0ee3cfcc90202c35c4769ede020bb0924def18453b836f889b1224945d7ac59b",
-      "fundAgent": "0x6813cc8e30ec7e7ededca5bfb927c7c9586ad1968552a7b96f7667eba7b5d7bc",
-      "createVault": "0xd2663e61ba6071320b56b7bbc768b907541f8c60e73c347396904011a92cd799",
-      "approve": "0xc7b050cc197bfa370c3495ce7408100dd79a726f3c1ffe92f76852e4ebf997ee",
-      "deposit": "0x043bb81e5713fda8d4918b19d430ba8a37b8dbb422042fd9399b4622c92c18a5",
-      "authorize": "0xbc04d72c994b7d5158b1fefd752f9a2bbd2ccdb2c94cb4a4bffb44d8bdc50e5f",
-      "pay": "0x7bb613be01f26097988ba3a3dfee5c6c8195d24aa7eab051954b0194659fcaca",
-      "authorizeV2": "0x5af5d89017cc1dbc7ac4af79c4cad60fda092b1751ffe8bc5ed46f4f4caf7ec2",
-      "topUpGas": "0x4af3ebddddc05fe190731ea203d2983b76681e0da3350179ee21c665a0b3bb6a",
-      "setRecipient": "0x3f015ffe0648c2e6b553e093c95587102b4772c851b1d72f78e0e9a0e368afd0",
-      "removeRecipient": "0x167fd0fc6308ccadd4afab9e88fcc037ac7bc818fc1c7cbdbcd6973c4b0b206d",
-      "setRegistry": "0xed60eaffd455e28639b6f5f6a4697fae307febd9dce1a82d8aa94ddd7557726a",
-      "authorizeRegistry": "0x9b86015c5a0d1e985245131b3a03182978b248cbadb107ed16749614be33a23d",
-      "reauthorizeShort": "0xa27d421aad1410666b815383a333ad12f0e5873b4f95b51a959a7ec099e624df",
-      "reauthorize": "0xe2890d51bbf2ca3949d87deb057121a06ab1b6bae5ad12de554e11f3729f572c",
-      "revoke": "0x7b8561c587a5fcc8d1c3641e0e8d7723e21fb3d1a85c05638c33dfa5b9b603ac",
-      "withdraw": "0x151fe27c3dc03cc193ded8fcc3f45fa033cf53298edc43d57930a15141f77862"
+      "fundOwner": "0xae513931db2adffefa05fa648b3d1120d87ae1cd27c8c57c0bf7faba46d70c0a",
+      "fundAgent": "0x9b9d739daa67e85eca4c41734cc2bb5b8e9024bd9572dac837009d1b75a9069e",
+      "createVault": "0x19323be9759e930bba38ecfb74696ff01fe4f329fb6b1e05694147f0c81c7d91",
+      "approve": "0xdc2cf322c1a8281e248ff472603b70e6b2e0eac1c4fa457509dfd9d7f6ae8afd",
+      "deposit": "0xf56c5a5be6b611beefe04b3702c91f1d55a81c036ba2a9195b7aeaeb2e70e385",
+      "authorize": "0xc34d97503ffc950f889cdb8f6a76d3d758a20473c8afdfecb8cf0aadcc3f711e",
+      "pay": "0x101df4c59196712d17be971b37fe588b54bed35b7aa86db4e17c8823c8eeb454",
+      "authorizeV2": "0x267b53465c12ee1d60f6179afacb671cf10983de73755edfb186dce85306cf7d",
+      "topUpGas": "0x5662c0b9f24e180abf0c6bede4d23d0764969a004d07dc9e7d79428eae3f996d",
+      "setRecipient": "0xc2fd3f640d8683ac85c500d56c5a8ae9d3837510c0bec4857ed2bf309b0a9773",
+      "removeRecipient": "0x28bf042d9780aac4828b72bcde50d190fa1cd72477722f226ec704ef81ed8706",
+      "setRegistry": "0x695f0434385ddc937c85a3e953b4142b8a526885c375387b8d3cfe86fcb574fa",
+      "authorizeRegistry": "0xe38df35173f267479be1726d753350b4abd8beb73b436fb090e317efc4086343",
+      "reauthorizeShort": "0xe7ebc25c8e6a0f77aea258d1228ab931850d4615c3030af85e8dba6f87a51a2c",
+      "reauthorize": "0x5c6ecf493ede432a64c0bfd12df3087df4ce02b78d89d16d243da7fe6e00f25e",
+      "revoke": "0x2be9eba4188a815f36b49026aa28b53fcaf6dfed00654148b05ef44af282c2f6",
+      "withdraw": "0xc4b6b2c4f516d702d2c19ce0f0d68400ced79506fc3f44f9b8bd4597339347b6"
     },
-    "testedAt": "2026-10-14T23:35:48.494Z"
+    "testedAt": "2026-10-15T00:56:48.139Z"
   }
 }

@@ -24,7 +24,8 @@
     "arc:testnet:x402": "tsx --env-file=.env.arc-testnet --test scripts/arc-x402.test.ts",
     "arc:testnet:demo-setup": "tsx --env-file=.env.arc-testnet scripts/arc-testnet-demo-setup.ts",
     "arc:ai-agent": "tsx agent/ai-agent.ts",
-    "arc:watch": "tsx agent/watch.ts"
+    "arc:watch": "tsx agent/watch.ts",
+    "arc:ready": "tsx scripts/arc-mainnet-readiness.ts"
   },
   "dependencies": {
     "lucide-react": "^1.20.0",

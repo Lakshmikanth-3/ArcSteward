@@ -149,6 +149,7 @@ pnpm arc:testnet:setup   # create dedicated testnet keys in ignored .env.arc-tes
 pnpm arc:testnet:e2e     # full end-to-end on Arc testnet with real transactions
 X402_BASE_URL=http://localhost:3000 pnpm arc:testnet:x402   # pay-per-request API, incl. forged proofs
 pnpm arc:testnet:browser # clicks through the live site on Arc testnet
+pnpm arc:ready           # everything above + read-only mainnet preflight -> docs/MAINNET_READINESS.md
 E2E_BASE_URL=https://velo402.vercel.app pnpm test:e2e e2e/arc-live.spec.ts   # live site checks
 ```
 
@@ -169,7 +170,8 @@ E2E_BASE_URL=https://velo402.vercel.app pnpm test:e2e e2e/arc-live.spec.ts   # l
 
 ```bash
 # Free LLM: create a key at console.groq.com (no card), or run Ollama locally.
-LLM_API_KEY=gsk_... ARC_NETWORK=testnet ARC_VAULT_ADDRESS=0x... pnpm arc:ai-agent
+LLM_API_KEYS=gsk_a,gsk_b,gsk_c ARC_NETWORK=testnet ARC_VAULT_ADDRESS=0x... pnpm arc:ai-agent
+# Several keys rotate automatically on rate limits. --every 30 runs a task every 30 minutes.
 # Ollama: LLM_BASE_URL=http://localhost:11434/v1 LLM_MODEL=llama3.1
 # No LLM: add --scripted to run the same tools in a fixed order.
 ```
