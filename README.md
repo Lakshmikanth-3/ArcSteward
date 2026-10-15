@@ -2,9 +2,27 @@
 
 **Velo402 gives autonomous AI agents restricted authority to spend USDC through an owner-controlled vault.** Owners define spending limits, authorized recipients and expiration rules, and can revoke permissions. The Arc deployment provides programmable, policy-enforced payments with verifiable on-chain transactions.
 
-- **Live app:** https://velo402.vercel.app
+- **Live app (Arc mainnet):** https://velo402.vercel.app/arc
 - **Security proof:** https://velo402.vercel.app/security
+- **Developers / SDK / HTTP 402 API:** https://velo402.vercel.app/developers
 - **Builder:** https://github.com/Lakshmikanth-3
+
+## Live on Arc mainnet (chain 5042)
+
+| What | Address / transaction |
+| --- | --- |
+| ArcVaultFactory | [`0x333af5f858a1cc267b6ab16e83bcb2fe28f8b2b1`](https://explorer.arc.io/address/0x333af5f858a1cc267b6ab16e83bcb2fe28f8b2b1) (deploy tx [`0x4bf4f62e…9225f1e`](https://explorer.arc.io/tx/0x4bf4f62ef5104d956e18d37af1e2661e25c982b31b927dbe05742c63d9225f1e)) |
+| MerchantRegistry | [`0x8ab3bc42d0d6630395cc9eea8f44de007efa026f`](https://explorer.arc.io/address/0x8ab3bc42d0d6630395cc9eea8f44de007efa026f) |
+| Vault used by the AI agent | [`0xD0e065D4978F7614C3d6dA5b162fd25ed45c3C8F`](https://explorer.arc.io/address/0xD0e065D4978F7614C3d6dA5b162fd25ed45c3C8F) |
+| First AI-agent payment (0.01 USDC, via registry merchant) | [`0xee745efa…6ee1eedd`](https://explorer.arc.io/tx/0xee745efaace3a156f09ae07b4d9e1e47204075d8cf192114c378f01e6ee1eedd) |
+| AI agent buying data over HTTP 402 (2 × 0.01 USDC) | [`0x4470348e…ab4446bf4`](https://explorer.arc.io/tx/0x4470348e6f53a9c648bdbc3e6e4ceee1d91786bbd3cd22420401879ab4446bf4), [`0x5111969c…a8dafef8f`](https://explorer.arc.io/tx/0x5111969c433bda26c9c80a8cdb6a3ab3c22653cbab8956b40107397a8dafef8f) |
+| Console walkthrough payment (0.02 USDC, recorded in the demo video) | [`0x3ef19008…f11ff26e`](https://explorer.arc.io/tx/0x3ef190083bf8322e8514e6b24c43830915912358d134c4f801983268f11ff26e) |
+
+All mainnet records: [`contracts/arc/deployments/5042.json`](contracts/arc/deployments/5042.json), [`5042-setup.json`](contracts/arc/deployments/5042-setup.json) and the AI agent transcript [`5042-ai-agent-run.log`](contracts/arc/deployments/5042-ai-agent-run.log). On mainnet the vault also rejected an injected 5 USDC payment to an attacker (`RecipientDenied`) and an over-limit payment (`PaymentLimit`) without moving funds.
+
+## Demo video (5:22)
+
+Title → the problem (Bybit, about $1.5B, Feb 2025; the Freysa AI agent, about $47K, Nov 2024) → the solution and why the agent cannot overspend → why Arc → **live walkthrough on Arc mainnet** with real USDC (create vault, deposit, authorize with a daily limit, agent pays, three attacks rejected, revoke, withdraw, explorer receipt) → the AI agent paying an HTTP 402 API on mainnet and ignoring a prompt injection → architecture → end. Re-record with `app/scripts/arc-demo-record.ts`.
 
 ---
 
@@ -150,6 +168,7 @@ pnpm arc:testnet:e2e     # full end-to-end on Arc testnet with real transactions
 X402_BASE_URL=http://localhost:3000 pnpm arc:testnet:x402   # pay-per-request API, incl. forged proofs
 pnpm arc:testnet:browser # clicks through the live site on Arc testnet
 pnpm arc:ready           # everything above + read-only mainnet preflight -> docs/MAINNET_READINESS.md
+pnpm arc:test:ui-full    # every console button and page link, in a real browser
 E2E_BASE_URL=https://velo402.vercel.app pnpm test:e2e e2e/arc-live.spec.ts   # live site checks
 ```
 
@@ -179,6 +198,16 @@ LLM_API_KEYS=gsk_a,gsk_b,gsk_c ARC_NETWORK=testnet ARC_VAULT_ADDRESS=0x... pnpm 
 ### Alerts
 
 Set `ALERT_WEBHOOK_URL` and/or `TELEGRAM_BOT_TOKEN` + `TELEGRAM_CHAT_ID`, then `ARC_VAULT_ADDRESS=0x... pnpm arc:watch`. The SDK also sends an alert for every blocked payment.
+
+### Deploy to mainnet (what was run)
+
+```bash
+pnpm arc:ready                                              # all suites + mainnet preflight
+ARC_NETWORK=mainnet ARC_MAINNET_CONFIRM=I_CONFIRM_MAINNET_SPEND npx tsx --env-file=.env scripts/arc-deploy.ts --broadcast
+ARC_MAINNET_CONFIRM=I_CONFIRM_MAINNET_SPEND npx tsx --env-file=.env scripts/arc-mainnet-setup.ts   # vault, merchant, agent, first payment
+```
+
+Total mainnet cost for deployment, setup and the recorded demo was about 0.13 USDC in gas.
 
 ### Deploy
 

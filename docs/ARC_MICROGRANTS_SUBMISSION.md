@@ -1,10 +1,10 @@
 # Arc Microgrants submission — form answers
 
 **Link to your live deployment on Arc mainnet**
-https://velo402.vercel.app/arc
+https://velo402.vercel.app/arc (Arc mainnet console; proofs at /infrastructure and /security)
 
 **Arc mainnet contract address or a transaction hash we can verify**
-Factory: `<MAINNET_FACTORY_ADDRESS>` · Agent payment tx: `<MAINNET_PAYMENT_TX>` (https://explorer.arc.io)
+Factory `0x333af5f858a1cc267b6ab16e83bcb2fe28f8b2b1` · AI-agent payment tx `0xee745efaace3a156f09ae07b4d9e1e47204075d8cf192114c378f01e6ee1eedd` (https://explorer.arc.io/tx/0xee745efaace3a156f09ae07b4d9e1e47204075d8cf192114c378f01e6ee1eedd)
 
 **Public repo**
 https://github.com/Lakshmikanth-3/velo-arc
@@ -24,5 +24,7 @@ No.
 **Anything else we should see?**
 - Security proof (threat model + live receipts): https://velo402.vercel.app/security
 - Randomized attacker test: hundreds of malicious transactions per seed; after every one, on-chain spend must equal permitted payments and the attacker must hold zero USDC (`pnpm arc:test`).
+- A real AI agent paid an HTTP 402 API on Arc mainnet (txs in the README) and ignored a prompt injection; the vault rejects it anyway.
+- Demo video (5:22): <paste your YouTube or Loom link here>
 - Full end-to-end runs on Arc testnet with real transactions, including a Playwright click-through of the live site (`pnpm arc:testnet:e2e`, `pnpm arc:testnet:browser`).
 - Builder profile: https://github.com/Lakshmikanth-3
