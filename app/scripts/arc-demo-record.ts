@@ -1,27 +1,41 @@
-// Records the narrated product walkthrough on REAL Arc testnet (used for the demo video).
+// Records the narrated product walkthrough on REAL Arc (DEMO_NETWORK=mainnet|testnet) for the demo video.
 // Each step runs its action, zooms to the relevant control, and holds for its narration length.
-// Run: DEMO_DIR=<dir with dur.json> pnpm tsx --env-file=.env.arc-testnet scripts/arc-demo-record.ts
+// Testnet: DEMO_DIR=<dir> npx tsx --env-file=.env.arc-testnet scripts/arc-demo-record.ts
+// Mainnet: DEMO_NETWORK=mainnet ARC_MAINNET_CONFIRM=I_CONFIRM_MAINNET_SPEND DEMO_DIR=<dir> npx tsx --env-file=.env scripts/arc-demo-record.ts
+//   (owner = deployer key, agent = ARC_MAINNET_AGENT_PRIVATE_KEY; deposits 0.05 USDC and withdraws the rest at the end)
 import { readFileSync, writeFileSync } from 'node:fs';
 import { chromium, type Locator, type Page } from '@playwright/test';
 import { createPublicClient, createWalletClient, http, parseEther, type Hex } from 'viem';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
-import deployment from '../src/lib/arc/testnet-deployment.json';
-import { arcTestnet } from '../src/lib/arc/config';
+import testnetDeployment from '../src/lib/arc/testnet-deployment.json';
+import mainnetDeployment from '../src/lib/arc/mainnet-deployment.json';
+import { arcTestnet, arcMainnet } from '../src/lib/arc/config';
 import { factoryAbi, vaultAbi } from '../src/lib/arc/abi';
 
 const DIR = process.env.DEMO_DIR!;
 const BASE = process.env.E2E_BASE_URL ?? 'https://velo402.vercel.app';
-const FACTORY = deployment.factory as `0x${string}`;
+const NET = process.env.DEMO_NETWORK === 'mainnet' ? 'mainnet' : 'testnet';
+const chain = NET === 'mainnet' ? arcMainnet : arcTestnet;
+const FACTORY = (NET === 'mainnet' ? mainnetDeployment : testnetDeployment).factory as `0x${string}`;
+const DEPOSIT = NET === 'mainnet' ? '0.05' : '0.1';
 const dur = JSON.parse(readFileSync(`${DIR}/dur.json`, 'utf8')) as Record<string, number>;
-const rpc = http(arcTestnet.rpcUrls.default.http[0], { retryCount: 2 });
-const p = createPublicClient({ chain: arcTestnet, transport: rpc });
+const rpc = http(chain.rpcUrls.default.http[0], { retryCount: 2 });
+const p = createPublicClient({ chain, transport: rpc });
 
 async function main() {
-  const funder = createWalletClient({ account: privateKeyToAccount(process.env.ARC_OWNER_PRIVATE_KEY as Hex), chain: arcTestnet, transport: rpc });
-  const owner = privateKeyToAccount(generatePrivateKey()), agent = privateKeyToAccount(generatePrivateKey());
   const stranger = privateKeyToAccount(generatePrivateKey()).address;
-  for (const [to, v] of [[owner.address, '0.5'], [agent.address, '0.05']] as const) await p.waitForTransactionReceipt({ hash: await funder.sendTransaction({ to, value: parseEther(v) }) });
-  const wallets = { [owner.address]: createWalletClient({ account: owner, chain: arcTestnet, transport: rpc }), [agent.address]: createWalletClient({ account: agent, chain: arcTestnet, transport: rpc }) };
+  let owner, agent;
+  if (NET === 'mainnet') {
+    if (process.env.ARC_MAINNET_CONFIRM !== 'I_CONFIRM_MAINNET_SPEND') throw new Error('Mainnet spend confirmation required');
+    owner = privateKeyToAccount(process.env.ARC_DEPLOYER_PRIVATE_KEY as Hex); agent = privateKeyToAccount(process.env.ARC_MAINNET_AGENT_PRIVATE_KEY as Hex);
+    const ow = createWalletClient({ account: owner, chain, transport: rpc });
+    await p.waitForTransactionReceipt({ hash: await ow.sendTransaction({ to: agent.address, value: parseEther('0.008') }) });
+  } else {
+    const funder = createWalletClient({ account: privateKeyToAccount(process.env.ARC_OWNER_PRIVATE_KEY as Hex), chain, transport: rpc });
+    owner = privateKeyToAccount(generatePrivateKey()); agent = privateKeyToAccount(generatePrivateKey());
+    for (const [to, v] of [[owner.address, '0.5'], [agent.address, '0.05']] as const) await p.waitForTransactionReceipt({ hash: await funder.sendTransaction({ to, value: parseEther(v) }) });
+  }
+  const wallets = { [owner.address]: createWalletClient({ account: owner, chain, transport: rpc }), [agent.address]: createWalletClient({ account: agent, chain, transport: rpc }) };
   let selected: `0x${string}` = owner.address;
   let payHash = '';
 
@@ -30,7 +44,7 @@ async function main() {
   const page = await ctx.newPage();
   await page.exposeFunction('testWalletRequest', async ({ method, params }: { method: string; params?: unknown[] }) => {
     if (method === 'eth_requestAccounts' || method === 'eth_accounts') return [selected];
-    if (method === 'eth_chainId') return `0x${arcTestnet.id.toString(16)}`;
+    if (method === 'eth_chainId') return `0x${chain.id.toString(16)}`;
     if (method === 'wallet_switchEthereumChain' || method === 'wallet_addEthereumChain') return null;
     if (method === 'eth_sendTransaction') {
       const tx = (params?.[0] ?? {}) as { to: Hex; data?: Hex; value?: Hex; gas?: Hex };
@@ -74,15 +88,14 @@ async function main() {
   const statusHas = (t: RegExp | string, timeout = 90_000) => status.filter({ hasText: t }).waitFor({ timeout });
 
   await page.goto(BASE); await page.waitForLoadState('networkidle');
-  await step('d0', 'Home page · velo402.vercel.app', async () => { await wait(2); await zoom(page.locator('.arc-home-hero-copy'), 1.5); await wait(4); await unzoom(); });
-  await step('d0b', 'Capabilities and the payment journey', async () => { await page.locator('#how-it-works').scrollIntoViewIfNeeded(); await wait(1); await zoom(page.locator('.arc-home-steps'), 1.4); await wait(3); await unzoom(); });
-  await page.goto(`${BASE}/infrastructure`); await page.waitForLoadState('networkidle');
-  await step('d1', 'Infrastructure · networks, RPC endpoints, USDC contract', async () => { await wait(1.5); await zoom(page.locator('table').first(), 1.5); await wait(5); await unzoom(); });
-  await page.goto(`${BASE}/security`); await page.waitForLoadState('networkidle');
-  await step('d2', 'Security proof · each attack and the rule that blocks it', async () => { await wait(1); await zoom(page.locator('table').first(), 1.35); await wait(4); await unzoom(); });
-  await page.goto(`${BASE}/testnet`); await page.waitForLoadState('networkidle');
+  await step('d0', 'velo402.vercel.app · live on Arc mainnet', async () => {
+    await wait(2.5);
+    await page.goto(`${BASE}/security`); await page.waitForLoadState('networkidle'); await caption('Security proof · every attack and the rule that blocks it'); await zoom(page.locator('table').first(), 1.35); await wait(2.5); await unzoom();
+    await page.goto(`${BASE}/developers`); await page.waitForLoadState('networkidle'); await caption('Developers · SDK and HTTP 402 pay-per-request API'); await wait(2);
+  });
+  await page.goto(`${BASE}${NET === 'mainnet' ? '/arc' : '/testnet'}`); await page.waitForLoadState('networkidle');
   await page.getByRole('textbox', { name: 'Vault address' }).fill('');
-  await step('d3', 'Vault console · Arc Testnet · real transactions', async () => { await wait(2); await zoom(page.getByRole('button', { name: 'Connect EVM wallet' }).locator('xpath=ancestor::section[1]')); await connect(owner.address); await wait(2); await unzoom(); });
+  await step('d3', `Vault console · ${chain.name} · real USDC`, async () => { await wait(2); await zoom(page.getByRole('button', { name: 'Connect EVM wallet' }).locator('xpath=ancestor::section[1]')); await connect(owner.address); await wait(2); await unzoom(); });
 
   await step('d4', 'Step 1 · Owner creates a vault from the factory', async () => {
     const f = page.getByRole('textbox', { name: /Factory address/ }); await zoom(f.locator('xpath=ancestor::section[1]'), 1.6);
@@ -92,22 +105,23 @@ async function main() {
     for (let i = 0; i < 3; i++) { await page.getByRole('button', { name: 'Refresh on-chain state and history' }).click(); try { await statusHas('On-chain state refreshed', 20_000); break; } catch { await wait(3); } }
     await wait(1.5); await unzoom();
   });
-  await step('d5', 'Step 2 · Owner deposits 0.1 USDC', async () => {
+  await step('d5', `Step 2 · Owner deposits ${DEPOSIT} USDC`, async () => {
     await zoom(page.getByLabel('Deposit / withdrawal / payment amount (USDC)'), 1.6);
-    await clear('Deposit / withdrawal / payment amount (USDC)'); await type('Deposit / withdrawal / payment amount (USDC)', '0.1');
+    await clear('Deposit / withdrawal / payment amount (USDC)'); await type('Deposit / withdrawal / payment amount (USDC)', DEPOSIT);
     await page.getByRole('button', { name: 'Approve exact amount and deposit' }).click();
-    await page.getByText(/Available: 0.1 USDC/).waitFor({ timeout: 120_000 }); await unzoom(); await zoom(page.locator('.arc-stat').first(), 1.8); await wait(2); await unzoom();
+    await page.getByText(new RegExp(`Available: ${DEPOSIT} USDC`)).waitFor({ timeout: 120_000 }); await unzoom(); await zoom(page.locator('.arc-stat').first(), 1.8); await wait(2); await unzoom();
   });
   await step('d6', 'Step 3 · Owner authorizes the agent', async () => {
     await zoom(page.getByLabel('Agent EVM address').locator('xpath=ancestor::section[1]'), 1.5);
     await clear('Agent EVM address'); await type('Agent EVM address', agent.address);
-    await clear('Lifetime total budget (USDC)'); await type('Lifetime total budget (USDC)', '0.05');
+    await clear('Lifetime total budget (USDC)'); await type('Lifetime total budget (USDC)', '0.04');
     await clear('Maximum per payment (USDC)'); await type('Maximum per payment (USDC)', '0.02');
+    await clear('Daily limit (USDC)'); await type('Daily limit (USDC)', '0.03');
+    await clear('Gas allowance (USDC)'); await type('Gas allowance (USDC)', '0');
     await clear('Permitted recipients (comma separated)'); await type('Permitted recipients (comma separated)', owner.address);
     const expiry = await page.evaluate('(() => { const d = new Date(Date.now() + 3600000); const pad = n => String(n).padStart(2, "0"); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`; })()');
     await page.getByLabel('Expiry (your local time)').fill(String(expiry));
-  });
-  await step('d6b', 'Capability active on-chain', async () => { await page.getByRole('button', { name: 'Authorize / update' }).click(); await page.getByText(/Active: true/).waitFor({ timeout: 90_000 }); await unzoom(); await zoom(page.locator('.arc-stat').nth(1), 1.8); await wait(1.5); await unzoom(); });
+    await page.getByRole('button', { name: 'Authorize / update' }).click(); await page.getByText(/Active: true/).waitFor({ timeout: 90_000 }); await unzoom(); await zoom(page.locator('.arc-stat').nth(1), 1.8); await wait(1.5); await unzoom(); });
 
   const pay = async (amount: string, to: string, id: string) => {
     await clear('Deposit / withdrawal / payment amount (USDC)'); await type('Deposit / withdrawal / payment amount (USDC)', amount);
@@ -117,7 +131,7 @@ async function main() {
   };
   await step('d7', 'Step 4 · Agent pays 0.02 USDC on its own', async () => {
     await connect(agent.address); await zoom(page.getByLabel('Payment recipient').locator('xpath=ancestor::section[1]'), 1.4);
-    await pay('0.02', owner.address, 'invoice-001'); await page.getByText(/Remaining: 0.03 USDC/).waitFor({ timeout: 90_000 });
+    await pay('0.02', owner.address, 'invoice-001'); await page.getByText(/Remaining: 0.02 USDC/).waitFor({ timeout: 90_000 });
     await unzoom(); await zoom(page.locator('.arc-stat').nth(2), 1.8); await wait(2); await unzoom();
   });
   const attack = async (id: string, cap: string, amount: string, to: string, pid: string, msg: RegExp) => step(id, cap, async () => {
@@ -134,9 +148,9 @@ async function main() {
   await step('d12', 'Agent tries again → REFUSED: Unauthorized', async () => {
     await connect(agent.address); await pay('0.01', owner.address, 'invoice-004'); await statusHas('Unauthorized', 30_000); await zoom(status, 1.8); await wait(2); await unzoom();
   });
-  await step('d13', 'Step 6 · Owner withdraws the remaining 0.08 USDC', async () => {
+  await step('d13', 'Step 6 · Owner withdraws the remaining USDC', async () => {
     await connect(owner.address); await zoom(page.getByRole('button', { name: 'Withdraw to owner' }).locator('xpath=ancestor::section[1]'), 1.5);
-    await clear('Deposit / withdrawal / payment amount (USDC)'); await type('Deposit / withdrawal / payment amount (USDC)', '0.08');
+    await clear('Deposit / withdrawal / payment amount (USDC)'); await type('Deposit / withdrawal / payment amount (USDC)', NET === 'mainnet' ? '0.03' : '0.08');
     await page.getByRole('button', { name: 'Withdraw to owner' }).click(); await page.getByText(/Available: 0 USDC/).waitFor({ timeout: 90_000 }); await unzoom();
   });
   await step('d14', 'Event history · read directly from Arc', async () => {
@@ -145,10 +159,6 @@ async function main() {
     const vault = await p.readContract({ address: FACTORY, abi: factoryAbi, functionName: 'vaultOf', args: [owner.address] });
     const logs = await p.getContractEvents({ address: vault, abi: vaultAbi, eventName: 'Paid', fromBlock: (await p.getBlockNumber()) - 5000n });
     payHash = logs[0]?.transactionHash ?? '';
-  });
-  await step('d15', 'Proof · the payment on the Arc Testnet explorer', async () => {
-    await page.goto(`https://explorer.testnet.arc.io/tx/${payHash}`, { timeout: 30_000 }).catch(() => {}); await wait(4);
-    await caption(`Paid · ${payHash.slice(0, 10)}…${payHash.slice(-8)}`);
   });
   marks.end = (Date.now() - t0) / 1000;
   const video = page.video()!; await ctx.close(); await browser.close();
