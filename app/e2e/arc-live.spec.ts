@@ -20,6 +20,8 @@ test('testnet console reads the e2e vault from chain', async ({ page }) => {
   await page.getByRole('textbox', { name: 'Agent EVM address' }).fill(run.agent);
   await page.getByRole('button', { name: 'Refresh on-chain state and history' }).click();
   await expect(page.locator('body')).toContainText(run.owner, { timeout: 45_000, ignoreCase: true });
-  await expect(page.locator('body')).toContainText(/Paid/, { timeout: 45_000 });
-  await expect(page.locator('body')).toContainText(/Revoked/);
+  // The console's event history loads a recent block window; this run's events are ~285k blocks
+  // old, so assert the same facts from current contract state: payments spent, capability revoked.
+  await expect(page.locator('body')).toContainText(/Spent: 0\.0\d+ USDC/, { timeout: 45_000 });
+  await expect(page.locator('body')).toContainText(/Active: false/);
 });
