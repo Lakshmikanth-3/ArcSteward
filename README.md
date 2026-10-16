@@ -1,11 +1,28 @@
-# Velo402 on Arc
+# ArcSteward on Arc
 
-**Velo402 gives autonomous AI agents restricted authority to spend USDC through an owner-controlled vault.** Owners define spending limits, authorized recipients and expiration rules, and can revoke permissions. The Arc deployment provides programmable, policy-enforced payments with verifiable on-chain transactions.
+> Formerly **Velo402**. The live URL (`velo402.vercel.app`), the SDK package (`@velo402/arc-sdk`) and the HTTP 402 payment scheme (`velo402-vault`) keep their original identifiers so deployed agents and on-chain records keep working.
+
+**ArcSteward gives autonomous AI agents restricted authority to spend USDC through an owner-controlled vault.** Owners define spending limits, authorized recipients and expiration rules, and can revoke permissions. The Arc deployment provides programmable, policy-enforced payments with verifiable on-chain transactions.
 
 - **Live app (Arc mainnet):** https://velo402.vercel.app/arc
 - **Security proof:** https://velo402.vercel.app/security
 - **Developers / SDK / HTTP 402 API:** https://velo402.vercel.app/developers
 - **Builder:** https://github.com/Lakshmikanth-3
+
+## The website
+
+The web app uses a "codex" design: parchment, ink and copper, with Instrument Serif headings and IBM Plex Mono text. The idea comes from Byzantium, where a treasurer never carried the gold, only a seal saying what he was allowed to spend. ArcSteward gives an agent the same thing: a sealed, revocable capability.
+
+| Page | What it shows |
+| --- | --- |
+| `/` | Landing page: a 3D vault gate (three.js) where allowed payments pass and attacker payments are stopped; a step-by-step replay of the real mainnet AI-agent run with explorer links; the owner-to-agent journey as a scroll-driven carousel; the mainnet receipt; proof figures |
+| `/arc` | Owner and agent console on Arc mainnet: connect wallet, create and fund a vault, authorize, pay, revoke, withdraw, event history |
+| `/testnet` | The same console on Arc testnet |
+| `/infrastructure` | Network configuration, execution path and live mainnet contract addresses |
+| `/security` | Threat model, adversarial test and mainnet and testnet receipts |
+| `/developers` | SDK quickstart, HTTP 402 API, AI agent, alerts, comparison and roadmap |
+
+All motion respects `prefers-reduced-motion`, and every page works at phone width.
 
 ## Live on Arc mainnet (chain 5042)
 
@@ -22,9 +39,9 @@ All mainnet records: [`contracts/arc/deployments/5042.json`](contracts/arc/deplo
 
 ## Built for Arc Microgrants
 
-Velo402 was built and submitted to [Arc Microgrants](https://dorahacks.io/hackathon/arc-microgrants/build), which funds projects that are **deployed and working on Arc mainnet**. Every requirement below links to its proof.
+ArcSteward was built and submitted to [Arc Microgrants](https://dorahacks.io/hackathon/arc-microgrants/build), which funds projects that are **deployed and working on Arc mainnet**. Every requirement below links to its proof.
 
-| Program requirement | How Velo402 meets it | Proof |
+| Program requirement | How ArcSteward meets it | Proof |
 | --- | --- | --- |
 | Deployed and working on Arc mainnet | Factory, registry and a funded vault on chain 5042; real agent payments | [Factory](https://explorer.arc.io/address/0x333af5f858a1cc267b6ab16e83bcb2fe28f8b2b1) · [agent payment](https://explorer.arc.io/tx/0xee745efaace3a156f09ae07b4d9e1e47204075d8cf192114c378f01e6ee1eedd) |
 | Live link reviewers can open | Web console defaults to Arc mainnet | https://velo402.vercel.app/arc |
@@ -65,7 +82,7 @@ flowchart LR
     K[Agent holds the key] -->|one prompt injection| X[Wallet drained]
     H[Human approves each payment] --> S[Not autonomous]
   end
-  subgraph V["Velo402"]
+  subgraph V["ArcSteward"]
     A[Agent signs payment] --> C{Vault checks owner policy<br/>on-chain}
     C -->|all rules pass| P[USDC paid + receipt]
     C -->|any rule fails| R[Revert, nothing moves]
@@ -113,7 +130,7 @@ The agent signs its own payments, so it stays autonomous. The vault contract che
 ```mermaid
 flowchart TB
   O["Owner wallet<br/>(browser or Safe multisig)"]
-  AG["AI agent<br/>Velo402 SDK, own key"]
+  AG["AI agent<br/>ArcSteward SDK, own key"]
   API["Paid API (HTTP 402)<br/>/api/x402/*"]
   UI["Web console<br/>velo402.vercel.app"]
   AL["Alerts<br/>webhook, Telegram, in-app"]
@@ -295,6 +312,16 @@ pnpm arc:ready           # everything above + read-only mainnet preflight -> doc
 pnpm arc:test:ui-full    # every console button and page link, in a real browser
 E2E_BASE_URL=https://velo402.vercel.app pnpm test:e2e e2e/arc-live.spec.ts   # live site checks
 ```
+
+### Latest test run
+
+| Suite | Result |
+| --- | --- |
+| `pnpm arc:test` (contract + adversarial invariant + SDK) | 14 / 14 pass |
+| `pnpm test:e2e` (all pages load, console states, live testnet vault read) | 8 / 8 pass |
+| `pnpm arc:test:ui` (owner creates, funds, authorizes; agent pays; owner revokes) | 1 / 1 pass |
+| `pnpm arc:test:ui-full` (every console control and page link) | 10 / 10 pass |
+| `pnpm typecheck` · `pnpm lint` · `next build` | pass |
 
 ### Test manually in the browser (Arc testnet)
 

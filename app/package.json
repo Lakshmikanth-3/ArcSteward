@@ -33,6 +33,7 @@
     "next": "16.2.9",
     "react": "19.2.4",
     "react-dom": "19.2.4",
+    "three": "0.180.0",
     "viem": "^2.21.0"
   },
   "devDependencies": {
@@ -42,6 +43,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "@types/three": "0.180.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.9",
     "ganache": "7.9.2",

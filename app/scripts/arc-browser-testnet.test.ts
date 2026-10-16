@@ -52,7 +52,7 @@ test('browser click-through on Arc testnet: owner funds and authorizes, agent pa
     });
     await page.addInitScript('window.ethereum = { request: (r) => window.testWalletRequest(r), on() {}, removeListener() {} };');
     if (d.enabled) {
-      await page.goto(`${BASE}/`); await d.scene('p01', page.locator('.arc-home-hero'));
+      await page.goto(`${BASE}/`); await d.scene('p01', page.locator('.codex .hero'));
       await d.scene('p02', page.locator('#how-it-works'));
       await page.goto(`${BASE}/infrastructure`); await d.scene('p03', sec('Network configuration'));
       await page.goto(`${BASE}/security`); await d.scene('p04', sec('Threat model'));

@@ -66,7 +66,7 @@ async function main() {
   const zoom = async (loc: Locator, max = 1.9) => {
     await loc.scrollIntoViewIfNeeded(); await wait(0.3);
     await loc.evaluate((el, max) => {
-      const root = document.querySelector('.arc-workspace, .arc-home') as HTMLElement; const r = el.getBoundingClientRect(), c = root.getBoundingClientRect();
+      const root = document.querySelector('.arc-workspace, .codex') as HTMLElement; const r = el.getBoundingClientRect(), c = root.getBoundingClientRect();
       const s = Math.max(1, Math.min(max, 1500 / r.width, 760 / r.height));
       root.style.transition = 'transform 1.1s cubic-bezier(.2,.8,.2,1)'; root.style.transformOrigin = `${r.x - c.x + r.width / 2}px ${r.y - c.y + r.height / 2}px`;
       root.style.transform = `translate(${960 - (r.x + r.width / 2)}px, ${500 - (r.y + r.height / 2)}px) scale(${s})`;
@@ -75,7 +75,7 @@ async function main() {
     }, max);
     await wait(1.2);
   };
-  const unzoom = async () => { await page.evaluate(() => { const root = document.querySelector('.arc-workspace, .arc-home') as HTMLElement; if (root) root.style.transform = 'none'; for (const e of (window as unknown as { __hl?: HTMLElement[] }).__hl ?? []) e.style.boxShadow = ''; (window as unknown as { __hl: HTMLElement[] }).__hl = []; }); await wait(1.1); await page.evaluate(() => { const root = document.querySelector('.arc-workspace, .arc-home') as HTMLElement; if (root) { root.style.transition = ''; root.style.transform = ''; } }); };
+  const unzoom = async () => { await page.evaluate(() => { const root = document.querySelector('.arc-workspace, .codex') as HTMLElement; if (root) root.style.transform = 'none'; for (const e of (window as unknown as { __hl?: HTMLElement[] }).__hl ?? []) e.style.boxShadow = ''; (window as unknown as { __hl: HTMLElement[] }).__hl = []; }); await wait(1.1); await page.evaluate(() => { const root = document.querySelector('.arc-workspace, .codex') as HTMLElement; if (root) { root.style.transition = ''; root.style.transform = ''; } }); };
   const step = async (id: string, cap: string, action: () => Promise<void>) => {
     const start = (Date.now() - t0) / 1000; marks[id] = start; console.log('step', id, start.toFixed(1));
     await caption(cap);

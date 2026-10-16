@@ -252,7 +252,7 @@ export default function ArcConsole({ networkName, rpcUrl, factoryAddress = '', i
       {field('Merchant registry address', registryText, setRegistryText)}
       {button('Set merchant registry', () => write('setRegistry', [registryText ? address(registryText) : '0x0000000000000000000000000000000000000000']), !isOwner || wrongChain, 'secondary')}
     </div></section>
-    <section id="arc-payments"><div className="arc-panel-head"><span className="arc-panel-icon"><Send size={18} /></span><div><h2>Execute a payment</h2><p>04 / Sign with the authorized agent wallet</p></div></div><div className="arc-fields"><p>Connect the authorized agent wallet, load the vault and pay. Leave the invoice ID empty to generate one; it is hashed on-chain so the same invoice can never be paid twice. A server agent can use the Velo402 SDK.</p>
+    <section id="arc-payments"><div className="arc-panel-head"><span className="arc-panel-icon"><Send size={18} /></span><div><h2>Execute a payment</h2><p>04 / Sign with the authorized agent wallet</p></div></div><div className="arc-fields"><p>Connect the authorized agent wallet, load the vault and pay. Leave the invoice ID empty to generate one; it is hashed on-chain so the same invoice can never be paid twice. A server agent can use the ArcSteward SDK.</p>
       {field('Payment recipient', recipient, setRecipient)} {field('Unique invoice / payment ID', paymentId, setPaymentId, 'text', 'auto-generated if empty')}
       <div className="arc-actions">{button('Pay USDC', () => mutate('pay'), !account || wrongChain || !vault)} {button('Draw gas from allowance', () => mutate('topUpGas'), !account || wrongChain || !vault, 'secondary')}</div>
     </div></section></div></div>

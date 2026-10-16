@@ -1,11 +1,15 @@
 import type { Metadata } from "next";
+import { IBM_Plex_Mono, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 import "./arc-workspace.css";
 import ConditionalLayout from "@/components/ConditionalLayout";
 import { projectDescription } from "@/lib/arc/project";
 
+const serif = Instrument_Serif({ subsets: ["latin"], weight: "400", style: ["normal", "italic"], variable: "--font-serif" });
+const mono = IBM_Plex_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], style: ["normal", "italic"], variable: "--font-mono" });
+
 export const metadata: Metadata = {
-  title: "Velo402 — Arc Agent Vault",
+  title: "ArcSteward — Arc Agent Vault",
   description: projectDescription,
 };
 
@@ -15,7 +19,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
+    <html lang="en" className={`${serif.variable} ${mono.variable}`}>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
