@@ -2,6 +2,24 @@
 
 > Formerly **Velo402**. The live URL (`velo402.vercel.app`), the SDK package (`@velo402/arc-sdk`) and the HTTP 402 payment scheme (`velo402-vault`) keep their original identifiers so deployed agents and on-chain records keep working.
 
+## EarlyPay (built during Tameion, Sep 27 – Oct 17)
+
+**Suppliers get paid in seconds instead of 60 days, an AI decides which invoices are worth paying early, and the vault makes the payment impossible to hijack.**
+
+A supplier signs an invoice and an early-payment discount from a phone (no gas, no app). The buyer's AI treasury agent weighs the discount's annualised return against what the cash would earn held, the 30-day liquidity runway and every risk flag, then pays early through the ArcSteward vault, holds, escalates to the owner or rejects, and writes its reason to a hash-chained log on Arc. Live on **Arc testnet** at `/earlypay`. Design, contract spec and threat model: [`docs/EARLYPAY.md`](docs/EARLYPAY.md). Demo script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md). Traction from chain events: [`docs/TRACTION.md`](docs/TRACTION.md).
+
+| | Before Tameion | Added during Tameion |
+| --- | --- | --- |
+| Contracts | ArcVault, factory, MerchantRegistry (mainnet + testnet) | [`EarlyPayLedger.sol`](contracts/arc/EarlyPayLedger.sol): supplier registry with self-signed payout and cooldown, EIP-712 offers, gasless relay, hash-chained decision log ([testnet](https://explorer.testnet.arc.io/address/0x97f61ef08f6a55fd417ffc8849cc9ba051baa8c0)). Vault contracts unchanged. |
+| Agent | AI agent buying data over HTTP 402 on mainnet | Treasury decision engine ([`app/src/lib/earlypay`](app/src/lib/earlypay)): deterministic discount-APR, hold-yield and runway math; risk checks; LLM decides within a policy ceiling with fallback; pays via the vault; records every decision |
+| SDK / API | `@velo402/arc-sdk`, HTTP 402 API | `/api/earlypay/relay` (gasless), `state`, `run`, `extract` (AI invoice reading) |
+| UI | Landing, vault console, security, developers | `/earlypay`, `/earlypay/supplier` (phone-first), `/earlypay/buyer` (two-key approval, escalations), `/earlypay/audit` (browser-verified hash chain) |
+| Treasury | USDC vault | Idle-cash hold yield: **simulated** reserve rate (USYC needs Circle allowlisting on Arc testnet); EURC on the roadmap |
+| Proof | Mainnet receipts, adversarial tests | [Testnet e2e, 14/14 with real transactions](contracts/arc/deployments/5042002-earlypay-e2e.json) ([LLM run](contracts/arc/deployments/5042002-earlypay-e2e-llm.json)); ledger, engine and hostile-LLM adversarial tests; [traction](docs/TRACTION.md) |
+
+**Why Arc and Circle:** early payment only matters if "today" means now, not three bank days, and Arc settles in about a second. USDC is both the payment and the gas, so paying many small invoices early costs about a cent each and the agent's math stays in one unit. The vault enforces the agent's authority on-chain, so it cannot be talked past. USYC is the hold side of every decision; EURC lets European suppliers be paid in the currency they invoice in (next).
+
+
 **ArcSteward gives autonomous AI agents restricted authority to spend USDC through an owner-controlled vault.** Owners define spending limits, authorized recipients and expiration rules, and can revoke permissions. The Arc deployment provides programmable, policy-enforced payments with verifiable on-chain transactions.
 
 - **Live app (Arc mainnet):** https://velo402.vercel.app/arc
@@ -317,10 +335,11 @@ E2E_BASE_URL=https://velo402.vercel.app pnpm test:e2e e2e/arc-live.spec.ts   # l
 
 | Suite | Result |
 | --- | --- |
-| `pnpm arc:test` (contract + adversarial invariant + SDK) | 14 / 14 pass |
+| `pnpm arc:test` (contract + adversarial invariant + SDK + EarlyPay ledger, engine and adversarial) | 20 + 8 pass |
 | `pnpm test:e2e` (all pages load, console states, live testnet vault read) | 8 / 8 pass |
 | `pnpm arc:test:ui` (owner creates, funds, authorizes; agent pays; owner revokes) | 1 / 1 pass |
 | `pnpm arc:test:ui-full` (every console control and page link) | 10 / 10 pass |
+| `pnpm earlypay:testnet:e2e` (EarlyPay steps 1–11, real Arc testnet transactions) | 14 / 14 pass |
 | `pnpm typecheck` · `pnpm lint` · `next build` | pass |
 
 ### Test manually in the browser (Arc testnet)
