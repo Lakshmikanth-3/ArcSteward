@@ -1,0 +1,14 @@
+# Never upload secrets or local artifacts to Vercel.
+.env
+.env.*
+**/.env
+**/.env.*
+!**/.env.example
+**/.earlypay-e2e-keys.json
+**/node_modules
+**/.next
+**/.next-arc-ui-test
+**/test-results
+**/playwright-report
+.git
+demo

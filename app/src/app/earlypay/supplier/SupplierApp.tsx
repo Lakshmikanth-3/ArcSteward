@@ -97,6 +97,7 @@ export default function SupplierApp() {
     const signature = await account.signTypedData({ domain: domain(arcTestnet.id, ledger), types: offerTypes, primaryType: 'Offer', message: offer });
     const meta = JSON.stringify({ number: inv.number.trim(), description: inv.description.trim() || undefined, notes: inv.notes.trim() || undefined, supplierName: name.trim() || undefined, currency: 'USDC' });
     const { tx, agentQueued } = await relay({ kind: 'offer', offer, signature, meta });
+    void fetch('/api/earlypay/run', { method: 'POST' }).then(() => reload()).catch(() => {});
     setMsg({ kind: 'good', text: `Invoice ${inv.number} sent to ${buyerName}'s treasury agent${agentQueued ? ', which is deciding now' : ''}. Tx ${short(tx)}` });
     setInv({ number: '', amount: '', due: '', discount: inv.discount, description: '', notes: '' });
     setTimeout(reload, 1500);
@@ -114,6 +115,13 @@ export default function SupplierApp() {
   });
 
   const mine = state?.offers ?? [];
+  // While any of this supplier's invoices awaits a decision (e.g. during the payout cooldown), nudge the agent.
+  const waiting = mine.some(o => !statusOf(state, o).latest);
+  useEffect(() => {
+    if (!waiting) return;
+    const t = setInterval(() => { void fetch('/api/earlypay/run', { method: 'POST' }).then(() => reload()).catch(() => {}); }, 20000);
+    return () => clearInterval(t);
+  }, [waiting, reload]);
   return <Shell>
     <div className="page-head"><span className="k">Supplier · about 2 minutes</span><h1>Get paid <em>this week,</em> not in 60 days.</h1><p>Register once, send your invoice and offer a small discount for early payment. {buyerName === 'the buyer' ? 'The buyer' : buyerName}&apos;s AI treasury agent decides in seconds and pays you in USDC on Arc. No gas, no app to install.</p></div>
 

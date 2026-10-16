@@ -36,6 +36,8 @@ export class EarlyPayAgent {
   private wallet;
   /** Offers this process already decided: guards against a lagging RPC node returning stale logs. */
   private decided = new Set<string>();
+  /** Offers this process escalated (same lag guard, so a re-check never records the escalation twice). */
+  private escalated = new Set<string>();
   constructor(readonly account: PrivateKeyAccount, readonly vault: Hex, readonly net: 'testnet' | 'mainnet', readonly policy: EarlyPayPolicy, readonly llm?: Llm, rpc?: string, readonly notify: (text: string) => Promise<unknown> = async () => undefined) {
     const chain = network(net);
     const ledger = LEDGER[net];
@@ -71,11 +73,15 @@ export class EarlyPayAgent {
     return hash;
   }
 
-  /** Offers with no decision yet, oldest first. */
+  /** Offers to (re)consider, oldest first: never decided, or escalated and still open
+   * (the owner may since have approved the supplier, or the cooldown may have ended). */
   async pending() {
     const [offers, decisions] = await Promise.all([fetchOffers(this.pub, this.ledger, this.from, this.vault), fetchDecisions(this.pub, this.ledger, this.from, this.vault)]);
-    const decided = new Set([...decisions.map(d => d.offerHash.toLowerCase()), ...this.decided]);
-    return { offers, decisions, open: offers.filter(o => !decided.has(o.offerHash.toLowerCase())) };
+    const latest = new Map<string, string>();
+    for (const d of decisions) latest.set(d.offerHash.toLowerCase(), d.decision);
+    for (const k of this.escalated) if (!latest.has(k)) latest.set(k, 'ESCALATE');
+    const open = offers.filter(o => { const k = o.offerHash.toLowerCase(); return !this.decided.has(k) && (!latest.has(k) || latest.get(k) === 'ESCALATE'); });
+    return { offers, decisions, open, latest };
   }
 
   async decideOne(item: SubmittedOffer, all: SubmittedOffer[], settledInvoices: Set<string>, history: Map<string, bigint[]>): Promise<{ result: DecisionResult; facts: Awaited<ReturnType<typeof readFacts>> }> {
@@ -94,7 +100,7 @@ export class EarlyPayAgent {
   }
 
   async runOnce(log: (r: RunResult) => void = r => console.log(JSON.stringify(r))) {
-    const { offers, open } = await this.pending();
+    const { offers, open, latest } = await this.pending();
     const settlements = await fetchSettlements(this.pub, this.ledger, this.from, this.vault);
     const settled = new Set(settlements.map(s => s.invoiceHash.toLowerCase()));
     const history = new Map<string, bigint[]>();
@@ -103,16 +109,22 @@ export class EarlyPayAgent {
     for (const item of open) {
       const base: RunResult = { offerHash: item.offerHash, invoice: item.meta.number, decision: '', reason: '', source: '' };
       try {
-        const { result } = await this.decideOne(item, offers, settled, history);
+        if (settled.has(item.offer.invoiceHash.toLowerCase()) && latest.get(item.offerHash.toLowerCase()) === 'ESCALATE') continue; // resolved by the owner
+        const { result, facts } = await this.decideOne(item, offers, settled, history);
         let decision = result.decision;
         const r: RunResult = { ...base, decision, reason: result.reason, source: result.source, overridden: result.overridden };
+        // A freshly registered payout is only waiting out its cooldown: decide later instead of escalating.
+        const onlyCooldown = facts.offerCheck === 'PayoutCoolingDown' && result.context.flags.every(f => f.severity === 'info' || f.code === 'PAYOUT_COOLDOWN');
+        if (onlyCooldown) { r.decision = 'WAIT'; r.reason = 'Supplier payout address is in its safety cooldown; deciding after it ends.'; results.push(r); log(r); continue; }
         if (decision === 'PAY_EARLY') {
           // The vault is the final authority: pre-check before recording, so a refusal becomes an escalation.
           const refusal = await this.checkPay(item.offer.payout, result.payoutUnits, item.offer.invoiceHash);
           if (refusal) { decision = 'ESCALATE'; r.decision = decision; r.reason = `Vault would refuse the payment (${refusal}); escalated to the owner. ${result.reason}`; result.reason = r.reason; }
         }
+        // Re-checked escalations are only recorded again when the outcome changes.
+        if (decision === 'ESCALATE' && latest.get(item.offerHash.toLowerCase()) === 'ESCALATE') { r.decision = 'ESCALATE (unchanged)'; results.push(r); log(r); continue; }
         r.decisionTx = await this.record(item, decision, result);
-        this.decided.add(item.offerHash.toLowerCase());
+        if (decision !== 'ESCALATE') this.decided.add(item.offerHash.toLowerCase()); else this.escalated.add(item.offerHash.toLowerCase());
         if (decision === 'PAY_EARLY') {
           r.paymentTx = await this.pay(item.offer.payout, result.payoutUnits, item.offer.invoiceHash);
           r.settlementTx = await this.write('recordSettlement', [this.vault, item.offer.invoiceHash, item.offer.payout, result.payoutUnits, r.paymentTx]);

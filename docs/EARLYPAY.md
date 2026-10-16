@@ -2,7 +2,7 @@
 
 **Suppliers get paid in seconds instead of 60 days, an AI decides which invoices are worth paying early, and the vault makes the payment impossible to hijack.**
 
-Built during the Tameion Agents Hackathon (Sep 27 – Oct 17, 2026) on top of the existing ArcSteward vault. Live on **Arc testnet**; not deployed to mainnet.
+Built during the Tameion Agents Hackathon (Sep 27 – Oct 17, 2026) on top of the existing ArcSteward vault. Live on **Arc testnet** at https://arcsteward.vercel.app/earlypay (supplier sign-up: https://arcsteward.vercel.app/earlypay/supplier); not deployed to mainnet.
 
 ## 1. Problem
 

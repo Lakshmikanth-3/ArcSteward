@@ -75,7 +75,9 @@ export default function BuyerApp() {
     if (!reg || reg.payout.toLowerCase() !== payout.toLowerCase()) throw new Error('This payout address is not the supplier\'s registered address. Not approving.');
     if (!agent) throw new Error('Agent address required');
     const tx = await send((w, a) => w.writeContract({ account: a, address: vault as Hex, abi: vaultAbi, functionName: 'setRecipient', args: [agent, payout as Hex, true] }));
-    return `Supplier approved on the vault (two-key rule complete). Tx ${short(tx)}. Run the agent to re-decide.`;
+    const res = await fetch('/api/earlypay/run', { method: 'POST' }).then(r => r.json()).catch(() => undefined) as { results?: { invoice?: string; decision: string }[] } | undefined;
+    const decided = res?.results?.filter(r => !r.decision.startsWith('ESCALATE')).map(r => `${r.invoice ?? '?'} → ${r.decision}`).join(', ');
+    return `Supplier approved on the vault (two-key rule complete). Tx ${short(tx)}.${decided ? ` The agent re-decided: ${decided}.` : ' The agent will re-check its escalated invoices.'}`;
   });
 
   const resolve = (o: SOffer, approve: boolean) => run(`${approve ? 'pay' : 'decline'}:${o.offerHash}`, async () => {

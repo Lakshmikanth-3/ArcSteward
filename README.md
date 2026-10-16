@@ -6,7 +6,7 @@
 
 **Suppliers get paid in seconds instead of 60 days, an AI decides which invoices are worth paying early, and the vault makes the payment impossible to hijack.**
 
-A supplier signs an invoice and an early-payment discount from a phone (no gas, no app). The buyer's AI treasury agent weighs the discount's annualised return against what the cash would earn held, the 30-day liquidity runway and every risk flag, then pays early through the ArcSteward vault, holds, escalates to the owner or rejects, and writes its reason to a hash-chained log on Arc. Live on **Arc testnet** at `/earlypay`. Design, contract spec and threat model: [`docs/EARLYPAY.md`](docs/EARLYPAY.md). Demo script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md). Traction from chain events: [`docs/TRACTION.md`](docs/TRACTION.md).
+A supplier signs an invoice and an early-payment discount from a phone (no gas, no app). The buyer's AI treasury agent weighs the discount's annualised return against what the cash would earn held, the 30-day liquidity runway and every risk flag, then pays early through the ArcSteward vault, holds, escalates to the owner or rejects, and writes its reason to a hash-chained log on Arc. **Live: https://arcsteward.vercel.app/earlypay** (Arc testnet). Suppliers start at https://arcsteward.vercel.app/earlypay/supplier. Design, contract spec and threat model: [`docs/EARLYPAY.md`](docs/EARLYPAY.md). Demo script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md). Traction from chain events: [`docs/TRACTION.md`](docs/TRACTION.md).
 
 | | Before Tameion | Added during Tameion |
 | --- | --- | --- |

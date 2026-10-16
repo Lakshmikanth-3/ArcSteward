@@ -7,6 +7,8 @@ import { ledgerAbi } from '@/lib/arc/abi';
 import { json, ledger, pub, relayer, serverAgent, throttle } from '@/lib/earlypay/server';
 import type { Hex, Offer } from '@/lib/earlypay/types';
 
+export const maxDuration = 60;
+
 type Body =
   | { kind: 'register'; supplier: string; payout: string; profileHash: string; signature: string }
   | { kind: 'offer'; offer: Record<string, string | number>; signature: string; meta: string };

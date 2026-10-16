@@ -129,7 +129,8 @@ async function main() {
     dupResults = [];
     await until(dupResults, ['A-1']);
     const vaultDup = await sim(agentKey, vault, vaultAbi as never, 'pay', [supA.address, U('0.49'), inv1.invoiceHash]);
-    record('7 duplicate', dupResults[0]?.decision === 'REJECT' && vaultDup === 'DuplicatePayment', `A-1 resubmitted → ${dupResults[0]?.decision}: ${dupResults[0]?.reason}; vault would revert: ${vaultDup}`, [s7.tx, dupResults[0]?.decisionTx].filter(Boolean) as Hex[]);
+    const dupR = dupResults.find(r => r.invoice === 'A-1');
+    record('7 duplicate', dupR?.decision === 'REJECT' && vaultDup === 'DuplicatePayment', `A-1 resubmitted → ${dupR?.decision}: ${dupR?.reason}; vault would revert: ${vaultDup}`, [s7.tx, dupR?.decisionTx].filter(Boolean) as Hex[]);
 
     // 9b. Owner approves the escalation and pays from the owner wallet (HUMAN_APPROVED).
     const ownerPay = earlyPayout(over.faceAmount, over.discountBps);
