@@ -32,7 +32,7 @@ async function main() {
   for (const v of vaults) ownerOf.set(v, String(await pub.readContract({ address: v as Hex, abi: [{ type: 'function', name: 'owner', stateMutability: 'view', inputs: [], outputs: [{ type: 'address' }] }], functionName: 'owner' })).toLowerCase());
   // Test data: e2e vaults (fresh test-owner vaults other than the demo vault) and this repo's UI test suppliers.
   const isTestVault = (v: string) => testVaults.has(v) || (ownerOf.get(v) === testOwner && v !== demoVault);
-  const isTestOffer = (o: SubmittedOffer) => isTestVault(o.offer.vault.toLowerCase()) || /^(test supplier|e2e-)/i.test(o.meta.supplierName ?? '');
+  const isTestOffer = (o: SubmittedOffer) => isTestVault(o.offer.vault.toLowerCase()) || /^(test supplier|e2e-|live check)/i.test(o.meta.supplierName ?? '');
 
   const buckets = { real: empty(), test: empty() };
   const decisionsByVault = new Map<string, DecisionEntry[]>();
