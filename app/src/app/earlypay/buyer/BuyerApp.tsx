@@ -51,7 +51,7 @@ export default function BuyerApp() {
 
   const run = (label: string, fn: () => Promise<string | void>) => async () => {
     setBusy(label); setMsg({ kind: '', text: '' });
-    try { const text = await fn(); if (text) setMsg({ kind: 'good', text }); await reload(); }
+    try { const text = await fn(); if (text) setMsg({ kind: 'good', text }); void reload(); }
     catch (e) { setMsg({ kind: 'bad', text: revertName(e) ?? (e instanceof Error ? e.message.split('\n')[0] : String(e)) }); }
     finally { setBusy(''); }
   };

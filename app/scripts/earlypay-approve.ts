@@ -26,7 +26,7 @@ async function main() {
   for (const [supplier, name] of seen) {
     const [payout, , , registered] = await pub.readContract({ address: ledger, abi: ledgerAbi, functionName: 'suppliers', args: [supplier as Hex] }) as readonly [Hex, Hex, bigint, boolean];
     if (!registered) { console.log(`skip ${name || supplier}: not registered`); continue; }
-    if (/^test supplier/i.test(name)) { console.log(`skip ${name}: internal test supplier`); continue; }
+    if (/^(test supplier|e2e-)/i.test(name)) { console.log(`skip ${name}: internal test supplier`); continue; }
     if (await pub.readContract({ address: vault, abi: vaultAbi, functionName: 'allowed', args: [agent, payout] })) { console.log(`ok   ${name || supplier}: ${payout} already approved`); continue; }
     if (!process.argv.includes('--yes')) { console.log(`TODO ${name || supplier}: would approve registered payout ${payout}`); continue; }
     const hash = await w.writeContract({ address: vault, abi: vaultAbi, functionName: 'setRecipient', args: [agent, payout, true] });
