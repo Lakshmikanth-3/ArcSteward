@@ -20,7 +20,7 @@ export default function LandingPage() {
     <CodexMotion />
     <nav className="nav">
       <Link className="brand" href="/">ArcSteward</Link>
-      <div className="links"><a href="#gate">The gate</a><a href="#agent">The agent</a><a href="#journey">Journey</a><a href="#march">Receipt</a><Link href="/security">Security</Link><Link href="/developers">Developers</Link></div>
+      <div className="links"><Link href="/earlypay">EarlyPay</Link><a href="#gate">The gate</a><a href="#agent">The agent</a><a href="#journey">Journey</a><a href="#march">Receipt</a><Link href="/security">Security</Link><Link href="/developers">Developers</Link></div>
       <Link className="btn" href="/arc">Open vault ↗</Link>
     </nav>
 

@@ -1,0 +1,14 @@
+{
+  "chainId": 5042002,
+  "contract": "EarlyPayLedger",
+  "ledger": "0x7698dffe15360d271f5af488b63cab0038af2c4d",
+  "deploymentHash": "0x607fe9b7d4e3224c5f2701183e8419a4341a320d740163a56e6a623fe24cce13",
+  "block": 67537479,
+  "cooldownSeconds": 120,
+  "deployer": "0x816326154e067B3A69648432c4292C51827BbfB0",
+  "compiler": "0.8.30",
+  "optimizerRuns": 200,
+  "evmVersion": "paris",
+  "status": "confirmed",
+  "explorer": "https://explorer.testnet.arc.io/address/0x7698dffe15360d271f5af488b63cab0038af2c4d"
+}

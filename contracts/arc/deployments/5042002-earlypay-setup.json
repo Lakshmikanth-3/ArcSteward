@@ -1,0 +1,21 @@
+{
+  "chainId": 5042002,
+  "vault": "0x6A878fC0D787250C58cdd33216a01573bc4c9fbd",
+  "owner": "0x816326154e067B3A69648432c4292C51827BbfB0",
+  "agent": "0x2E5FB0Df7BD8ECc7b00f9ecC36Bc1A4c4b2929FF",
+  "relayer": "0xc5C65c6d1e61Efe79b3bf968736113aeA8f789B3",
+  "policy": {
+    "maxTotalUSDC": "3",
+    "maxPaymentUSDC": "1",
+    "maxPerDayUSDC": "2.5",
+    "expiresDays": 7
+  },
+  "transactions": {
+    "authorize": "0xa65e7256de12c6e335ad6c1e02ff3c7a1c1000c81c84cb9fb359aeda1d2a8d83"
+  },
+  "gas": {
+    "relayer": "0.4",
+    "agent": "0.3"
+  },
+  "at": "2026-10-16T18:45:05.482Z"
+}

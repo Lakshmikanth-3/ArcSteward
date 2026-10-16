@@ -18,3 +18,12 @@ export async function notify(e: ArcEvent) {
   const results = await Promise.allSettled(jobs);
   return { text, delivered: results.filter(r => r.status === 'fulfilled').length, channels: jobs.length };
 }
+
+/** Plain-text owner alert (used by EarlyPay escalations and rejections). */
+export async function notifyText(text: string) {
+  const jobs: Promise<unknown>[] = [];
+  if (process.env.ALERT_WEBHOOK_URL) jobs.push(fetch(process.env.ALERT_WEBHOOK_URL, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text, content: text }) }));
+  if (process.env.TELEGRAM_BOT_TOKEN && process.env.TELEGRAM_CHAT_ID) jobs.push(fetch(`https://api.telegram.org/bot${process.env.TELEGRAM_BOT_TOKEN}/sendMessage`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ chat_id: process.env.TELEGRAM_CHAT_ID, text }) }));
+  const results = await Promise.allSettled(jobs);
+  return { text, delivered: results.filter(r => r.status === 'fulfilled').length, channels: jobs.length };
+}
