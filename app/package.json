@@ -32,7 +32,8 @@
     "earlypay:agent": "tsx --env-file=.env.arc-testnet agent/earlypay/run.ts",
     "earlypay:testnet:e2e": "tsx --env-file=.env.arc-testnet scripts/earlypay-testnet-e2e.ts",
     "earlypay:testnet:setup": "tsx --env-file=.env.arc-testnet scripts/earlypay-testnet-setup.ts",
-    "earlypay:stats": "tsx scripts/earlypay-stats.ts"
+    "earlypay:stats": "tsx scripts/earlypay-stats.ts",
+    "earlypay:approve": "tsx --env-file=.env.arc-testnet scripts/earlypay-approve.ts"
   },
   "dependencies": {
     "lucide-react": "^1.20.0",
