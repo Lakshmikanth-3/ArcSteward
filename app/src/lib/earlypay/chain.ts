@@ -11,12 +11,15 @@ const CHUNK = 9_000n; // Arc RPCs reject eth_getLogs ranges of 10,000 blocks or 
 type Decoded = Log & { eventName: string; args: Record<string, unknown>; transactionHash: Hex; blockNumber: bigint };
 
 // Incremental cache of every ledger event: each call only fetches blocks it has not seen.
-const cache = new Map<string, { next: bigint; events: Decoded[]; pending?: Promise<void> }>();
+// The newest blocks are re-scanned every time: load-balanced RPC nodes can lag and return
+// incomplete logs near the head, so nothing is treated as final until it is RESCAN blocks deep.
+const RESCAN = 64n;
+const cache = new Map<string, { next: bigint; events: Decoded[]; seen: Set<string>; pending?: Promise<void> }>();
 
 async function ledgerEvents(pub: Pub, ledger: Hex, fromBlock: bigint): Promise<Decoded[]> {
   const id = `${pub.chain?.id ?? 'x'}:${ledger.toLowerCase()}:${fromBlock}`;
   let c = cache.get(id);
-  if (!c) { c = { next: fromBlock, events: [] }; cache.set(id, c); }
+  if (!c) { c = { next: fromBlock, events: [], seen: new Set() }; cache.set(id, c); }
   if (c.pending) await c.pending;
   const entry = c;
   entry.pending = (async () => {
@@ -24,9 +27,14 @@ async function ledgerEvents(pub: Pub, ledger: Hex, fromBlock: bigint): Promise<D
     for (let from = entry.next; from <= latest; from += CHUNK) {
       const to = from + CHUNK - 1n > latest ? latest : from + CHUNK - 1n;
       const raw = await pub.getLogs({ address: ledger, fromBlock: from, toBlock: to });
-      entry.events.push(...parseEventLogs({ abi: ledgerAbi, logs: raw }) as unknown as Decoded[]);
-      entry.next = to + 1n;
+      for (const e of parseEventLogs({ abi: ledgerAbi, logs: raw }) as unknown as Decoded[]) {
+        const key = `${e.transactionHash}:${e.logIndex}`;
+        if (!entry.seen.has(key)) { entry.seen.add(key); entry.events.push(e); }
+      }
     }
+    const settledTo = latest > RESCAN ? latest - RESCAN : 0n;
+    if (settledTo + 1n > entry.next) entry.next = settledTo + 1n;
+    entry.events.sort((a, b) => (a.blockNumber === b.blockNumber ? Number(a.logIndex) - Number(b.logIndex) : a.blockNumber < b.blockNumber ? -1 : 1));
   })();
   try { await entry.pending; } finally { entry.pending = undefined; }
   return entry.events;

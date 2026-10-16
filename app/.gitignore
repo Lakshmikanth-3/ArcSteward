@@ -50,3 +50,4 @@ next-env.d.ts
 *.exe
 *.tgz
 *.log
+.earlypay-e2e-keys.json

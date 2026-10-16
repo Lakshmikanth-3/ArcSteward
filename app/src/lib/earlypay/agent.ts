@@ -34,12 +34,14 @@ export class EarlyPayAgent {
   readonly ledger: Hex;
   readonly from: bigint;
   private wallet;
+  /** Offers this process already decided: guards against a lagging RPC node returning stale logs. */
+  private decided = new Set<string>();
   constructor(readonly account: PrivateKeyAccount, readonly vault: Hex, readonly net: 'testnet' | 'mainnet', readonly policy: EarlyPayPolicy, readonly llm?: Llm, rpc?: string, readonly notify: (text: string) => Promise<unknown> = async () => undefined) {
     const chain = network(net);
     const ledger = LEDGER[net];
     if (!ledger) throw new Error(`EarlyPayLedger is not deployed on ${net}`);
     this.ledger = ledger; this.from = LEDGER_FROM_BLOCK[net];
-    const transport = http(rpc ?? chain.rpcUrls.default.http[0], { timeout: 20000, retryCount: 1 });
+    const transport = http(rpc ?? chain.rpcUrls.default.http[0], { timeout: 20000, retryCount: 6, retryDelay: 700 });
     this.pub = createPublicClient({ chain, transport }) as PublicClient;
     this.wallet = createWalletClient({ account, chain, transport });
   }
@@ -72,7 +74,7 @@ export class EarlyPayAgent {
   /** Offers with no decision yet, oldest first. */
   async pending() {
     const [offers, decisions] = await Promise.all([fetchOffers(this.pub, this.ledger, this.from, this.vault), fetchDecisions(this.pub, this.ledger, this.from, this.vault)]);
-    const decided = new Set(decisions.map(d => d.offerHash.toLowerCase()));
+    const decided = new Set([...decisions.map(d => d.offerHash.toLowerCase()), ...this.decided]);
     return { offers, decisions, open: offers.filter(o => !decided.has(o.offerHash.toLowerCase())) };
   }
 
@@ -110,6 +112,7 @@ export class EarlyPayAgent {
           if (refusal) { decision = 'ESCALATE'; r.decision = decision; r.reason = `Vault would refuse the payment (${refusal}); escalated to the owner. ${result.reason}`; result.reason = r.reason; }
         }
         r.decisionTx = await this.record(item, decision, result);
+        this.decided.add(item.offerHash.toLowerCase());
         if (decision === 'PAY_EARLY') {
           r.paymentTx = await this.pay(item.offer.payout, result.payoutUnits, item.offer.invoiceHash);
           r.settlementTx = await this.write('recordSettlement', [this.vault, item.offer.invoiceHash, item.offer.payout, result.payoutUnits, r.paymentTx]);

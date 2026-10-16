@@ -11,7 +11,7 @@ import { DEFAULT_POLICY } from '@/lib/earlypay/types';
 import { Shell, DEMO_VAULT, DEMO_AGENT, useEarlyPay, statusOf, DecisionTag, txUrl, addrUrl, short, fmt, type SOffer } from '@/components/earlypay/shared';
 
 const ledger = LEDGER.testnet!;
-const pub = createPublicClient({ chain: arcTestnet, transport: http() });
+const pub = createPublicClient({ chain: arcTestnet, transport: http(undefined, { retryCount: 5, retryDelay: 700 }) });
 const HUMAN_APPROVED = 4, REJECT = 3;
 const revertName = (e: unknown) => { const r = e instanceof BaseError ? e.walk(x => x instanceof ContractFunctionRevertedError) : undefined; return r instanceof ContractFunctionRevertedError ? r.data?.errorName ?? 'Reverted' : undefined; };
 

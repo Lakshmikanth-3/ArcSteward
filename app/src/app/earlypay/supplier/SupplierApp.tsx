@@ -14,7 +14,7 @@ import { Shell, DEMO_VAULT, useEarlyPay, statusOf, DecisionTag, txUrl, short, fm
 const KEY = 'arcsteward.earlypay.supplierKey';
 const PROFILE = 'arcsteward.earlypay.profile';
 const ledger = LEDGER.testnet!;
-const pub = createPublicClient({ chain: arcTestnet, transport: http() });
+const pub = createPublicClient({ chain: arcTestnet, transport: http(undefined, { retryCount: 5, retryDelay: 700 }) });
 const store = { get: (k: string) => { try { return localStorage.getItem(k); } catch { return null; } }, set: (k: string, v: string) => { try { localStorage.setItem(k, v); } catch { /* private mode */ } } };
 
 export default function SupplierApp() {

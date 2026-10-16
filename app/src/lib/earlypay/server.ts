@@ -11,7 +11,7 @@ import type { Hex } from './types';
 
 export const NET = 'testnet' as const;
 export const chain = network(NET);
-const transport = http(process.env.ARC_TESTNET_RPC_URL ?? chain.rpcUrls.default.http[0], { timeout: 20000, retryCount: 1 });
+const transport = http(process.env.ARC_TESTNET_RPC_URL ?? chain.rpcUrls.default.http[0], { timeout: 20000, retryCount: 6, retryDelay: 700 });
 export const pub = createPublicClient({ chain, transport }) as PublicClient;
 export const ledger = LEDGER[NET]!;
 
