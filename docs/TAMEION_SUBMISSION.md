@@ -22,15 +22,16 @@ Fill the fields marked **TODO** yourself. Update Traction from `pnpm earlypay:st
 
 ## Is this a continued project?
 
-Yes. ArcSteward (formerly Velo402) started as an owner-controlled USDC vault for AI agents on Arc: an agent gets a capability with per-payment, daily and total limits, a recipient allowlist and an expiry, and the contract enforces them. That base (vault, factory, merchant registry, agent SDK, HTTP 402 pay-per-request API and an AI agent paying on Arc mainnet) was built in mid-October 2026 and submitted to the Arc Microgrants program. No awards or grants have been received from Circle or Canteen so far. TODO: correct this if anything changed.
+No earlier hackathon project. ArcSteward EarlyPay was built during Tameion. It runs on a USDC spending-limit vault I wrote earlier in October (deployed on Arc mainnet, where an AI agent paid in real USDC). The vault was submitted to the Arc Microgrants program; no awards or grants have been received from Circle or Canteen. This is my first Canteen hackathon.
 
-During Tameion I built **EarlyPay**, a new product on top of that vault, without changing the deployed vault contracts:
-- `EarlyPayLedger.sol` (Arc testnet): supplier registry with self-signed payout addresses and a change cooldown, EIP-712 early-payment offers, a gasless relay, and an append-only, hash-chained decision log.
-- An AI treasury agent that decides, per invoice, PAY_EARLY / HOLD / ESCALATE / REJECT from deterministic math (discount APR vs hold yield, 30-day liquidity runway) and risk checks, with an LLM choosing and explaining within a policy ceiling.
-- Supplier (phone, no gas), buyer (two-key approval, escalations paid by the owner) and audit (browser-verified hash chain) pages, live at arcsteward.vercel.app.
-- A testnet end-to-end suite (14/14 steps with real transactions) and a live real-browser end-to-end test.
+What I built in the last two weeks: the payables agent that makes money, not just pays bills.
+- EarlyPayLedger (new Arc contract): suppliers sign their own payout address and invoices through a gasless relay; every agent decision is written to a hash-chained log.
+- The decision agent: compares the discount's annual return with what the cash earns held, checks liquidity, screens for bank-detail scams, duplicates, new suppliers, hidden instructions and over-limit amounts, and decides PAY EARLY, HOLD (with a counter-offer the supplier accepts in one tap), ESCALATE or REJECT. An LLM chooses only within the limits set by the math.
+- Two-key rule, owner-paid escalations (HUMAN_APPROVED), and live supplier, company and audit pages at arcsteward.vercel.app.
 
-Why it matters for the broader project: the vault proved that an agent's spending authority can be enforced on-chain. EarlyPay is the first business workflow built on it, where the agent makes a real treasury decision with real money and the guardrails decide what is possible. It turns the vault from infrastructure into a product for finance teams and their suppliers.
+Usage (on-chain, Arc testnet): 32+ invoices paid early by the agent (87.8+ USDC, about 60 days early), 108+ signed invoices, 12 held, 26+ attacks refused, 96 escalations reviewed. This is my own testing so far; real outside suppliers: TODO (update before submitting).
+
+Why it matters: the agent does not just spend safely, it earns money for the business by capturing early-payment discounts (2% for 60 days early is about 12% a year), and the vault makes sure it can never be tricked into paying the wrong account.
 
 ## Problem Statement
 
@@ -38,7 +39,7 @@ Suppliers wait 30–90 days to get paid while the buyer's cash sits idle; 47% of
 
 ## Project Description
 
-ArcSteward EarlyPay is an AI treasury agent that pays supplier invoices early in exchange for a discount, only when the math beats holding the cash, through a vault whose limits it cannot break.
+**The payables agent that makes money, not just pays bills.** ArcSteward's agent reads supplier early-payment offers and decides, invoice by invoice, whether paying early earns more than holding the cash. 2% for 60 days early is about 12% a year; idle cash earns about 4.5%. When the deal is good it pays in seconds on Arc; when it isn't, it holds and makes a counter-offer (the lowest discount it would pay today), which the supplier accepts in one tap. Discount captured so far: 32+ invoices paid early on Arc testnet. Safety (signed payouts, vault limits, a hash-chained record) is what lets it act alone, but the product is the return.
 
 How it works:
 1. A supplier registers its payout address and submits an invoice with an early-pay discount from a phone. It only signs (EIP-712); a relayer pays gas. No app, no gas.

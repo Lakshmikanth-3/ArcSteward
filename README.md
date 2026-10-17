@@ -1,6 +1,10 @@
-# ArcSteward: let AI pay your bills, safely
+# ArcSteward: the payables agent that makes money, not just pays bills
 
-**An AI treasury agent that pays supplier invoices early in USDC on Arc, only when the deal is good, only to the supplier's verified account, and only inside limits the company's wallet enforces on-chain. Every decision is recorded publicly.**
+**ArcSteward's agent reads supplier early-payment offers and decides, invoice by invoice, whether paying early earns more than holding the cash.** 2% for 60 days early is about 12% a year; idle cash earns about 4.5%. When the deal is good it pays in seconds in USDC on Arc. When it isn't, it holds and **makes a counter-offer** ("offer 1.07% and I pay today"), which the supplier accepts in one tap.
+
+**Discount captured so far:** 32+ invoices paid early by the agent on Arc testnet, about 60 days early on average, every discount kept by the buyer (from on-chain events, `pnpm earlypay:stats`).
+
+Safety is what lets it act alone: suppliers sign their own payout address, the vault enforces the agent's limits on-chain, and every decision is hash-chained on Arc.
 
 | | |
 | --- | --- |
@@ -29,7 +33,7 @@ ArcSteward EarlyPay lets an AI agent capture those discounts without ever being 
 
 1. **The company's USDC sits in an ArcSteward vault on Arc.** The agent gets a capability: per-payment, daily and total limits, an expiry, and payment only to approved suppliers. The vault contract checks every rule inside the transaction that moves the money.
 2. **Suppliers sign their own payout address and invoices** (EIP-712) from a phone. No app, no gas: a relay pays the network fee.
-3. **The agent decides** PAY EARLY, HOLD, ESCALATE or REJECT, using deterministic math (discount APR vs. hold yield, liquidity buffer) plus risk checks, with an LLM choosing only within the ceiling the math and policy allow.
+3. **The agent decides** PAY EARLY, HOLD (with a counter-offer), ESCALATE or REJECT, using deterministic math (discount APR vs. hold yield, liquidity buffer) plus risk checks, with an LLM choosing only within the ceiling the math and policy allow.
 4. **Every decision is written to a hash-chained log on Arc**, with the numbers the agent saw and its reason. Anyone can verify the chain in the browser.
 
 ---
@@ -83,7 +87,8 @@ flowchart TD
   N -- yes --> L{Within agent limits?}
   L -- no --> ES2[ESCALATE: owner may pay<br/>from own wallet]
   L -- yes --> M{Discount APR > hold yield + margin<br/>and buffer kept after paying?}
-  M -- no --> H[HOLD: pay on due date]
+  M -- no --> H[HOLD + counter-offer:<br/>lowest discount it would pay today]
+  H -. supplier accepts in one tap .-> I
   M -- yes --> P[PAY EARLY via the vault]
   RJ & RJ2 & ES & ES2 & H & P --> LOG[(Hash-chained decision log on Arc)]
 ```
