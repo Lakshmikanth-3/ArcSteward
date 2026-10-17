@@ -57,7 +57,7 @@ export function policyDecision(ctx: DecisionContext): { decision: DecisionResult
 
 /** What the LLM may choose given the policy ceiling (never riskier). */
 export const ALLOWED: Record<DecisionResult['decision'], DecisionResult['decision'][]> = {
-  REJECT: ['REJECT'], ESCALATE: ['ESCALATE', 'REJECT'], HOLD: ['HOLD', 'ESCALATE'], PAY_EARLY: ['PAY_EARLY', 'HOLD', 'ESCALATE'],
+  REJECT: ['REJECT'], ESCALATE: ['ESCALATE'], HOLD: ['HOLD', 'ESCALATE'], PAY_EARLY: ['PAY_EARLY', 'HOLD', 'ESCALATE'],
 };
 
 export type Llm = (system: string, user: string) => Promise<{ text: string; model: string }>;

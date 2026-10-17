@@ -77,6 +77,9 @@ test('LLM guardrails: cannot escalate risk, failures fall back, injected text do
   assert.equal(broken.decision, 'PAY_EARLY'); assert.equal(broken.source, 'policy'); assert.match(broken.overridden ?? '', /LLM unavailable/);
   const garbage = await decide(offer(), {}, facts(), DEFAULT_POLICY, [], { llm: llm('I think you should pay') });
   assert.equal(garbage.decision, 'PAY_EARLY'); assert.equal(garbage.source, 'policy');
+  // An escalation stays with the owner: the LLM cannot close it as REJECT on its own.
+  const over = await decide(offer({ faceAmount: 30_000_000n }), {}, facts(), DEFAULT_POLICY, [], { llm: llm('{"decision":"REJECT","reason":"too big"}') });
+  assert.equal(over.decision, 'ESCALATE'); assert.match(over.overridden ?? '', /outside the allowed set/);
   // Payout units are always computed in code, regardless of what the LLM says.
   assert.equal(cautious.payoutUnits, 9_800_000n);
 });

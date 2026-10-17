@@ -51,3 +51,4 @@ next-env.d.ts
 *.tgz
 *.log
 .earlypay-e2e-keys.json
+.earlypay-demo-keys.json

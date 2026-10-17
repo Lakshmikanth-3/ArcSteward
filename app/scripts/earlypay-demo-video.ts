@@ -13,6 +13,8 @@ import { fetchOffers, fetchDecisions } from '../src/lib/earlypay/chain';
 import { encodeNote, inputsHash } from '../src/lib/earlypay/log';
 import type { PublicClient } from 'viem';
 import { canonical } from '../src/lib/earlypay/log';
+import setup from '../../contracts/arc/deployments/5042002-earlypay-setup.json';
+const DEMO_VAULT = setup.vault as Hex;
 
 const BASE = 'https://arcsteward.vercel.app';
 const OUT = '../demo/earlypay';
@@ -23,6 +25,8 @@ const owner = privateKeyToAccount(process.env.ARC_OWNER_PRIVATE_KEY as Hex);
 const ownerWallet = createWalletClient({ account: owner, chain: arcTestnet, transport });
 const supplierKey = generatePrivateKey(), supplier = privateKeyToAccount(supplierKey);
 const payoutKey = generatePrivateKey(), payout = privateKeyToAccount(payoutKey);
+// Saved (git-ignored) so a crashed recording can still return the test supplier's USDC.
+writeFileSync('.earlypay-demo-keys.json', JSON.stringify({ at: new Date().toISOString(), supplierKey, payoutKey }, null, 2));
 const SUPPLIER_NAME = 'Asha Design Studio';
 const INV = `INV-${Date.now().toString(36).slice(-4).toUpperCase()}`;
 const attacker = privateKeyToAccount(generatePrivateKey());
@@ -31,7 +35,7 @@ const due = new Date(Date.now() + 60 * 86400e3).toISOString().slice(0, 10);
 /** An invoice for Asha that names a different payout account than the one she registered (BEC scenario). */
 async function submitRedirectedInvoice() {
   const ledger = LEDGER.testnet!;
-  const vault = (await (await fetch(`${BASE}/api/earlypay/state`)).json()).vault as Hex;
+  const vault = DEMO_VAULT;
   const now = Math.floor(Date.now() / 1000);
   const offer = { vault, supplier: supplier.address, invoiceHash: keccak256(toHex(`${vault}|${supplier.address}|${INV}-BEC`.toLowerCase())), faceAmount: 3_000_000n, discountBps: 200, payout: attacker.address, dueDate: BigInt(Math.floor(new Date(due + 'T12:00:00Z').getTime() / 1000)), expiry: BigInt(now + 7 * 86400) };
   const signature = await supplier.signTypedData({ domain: domain(arcTestnet.id, ledger), types: offerTypes, primaryType: 'Offer', message: offer });
@@ -180,7 +184,7 @@ async function main() {
   // Pre-stage (not recorded): clear escalations left by earlier rehearsals so the buyer queue is clean.
   {
     const ledger = LEDGER.testnet!;
-    const vault = (await (await fetch(`${BASE}/api/earlypay/state`)).json()).vault as Hex;
+    const vault = DEMO_VAULT;
     const [offers, decisions] = await Promise.all([fetchOffers(pub as PublicClient, ledger, LEDGER_FROM_BLOCK.testnet, vault), fetchDecisions(pub as PublicClient, ledger, LEDGER_FROM_BLOCK.testnet, vault)]);
     const latest = new Map(decisions.map(d => [d.offerHash.toLowerCase(), d.decision]));
     for (const o of offers.filter(x => /^(asha design studio|e2e-|test supplier)/i.test(x.meta.supplierName ?? '') && latest.get(x.offerHash.toLowerCase()) === 'ESCALATE')) {
@@ -208,45 +212,39 @@ async function main() {
   const row = (p: Page, n: string) => p.locator('.item', { hasText: `${INV}-${n} ·` }).first();
   const has = async (p: Page, n: string, re: RegExp) => re.test(await row(p, n).innerText().catch(() => ''));
 
-  // ── 1-5. The business case ──
-  await slideSection('hook', slide(`<img class="coin" src="${BASE}/img/coin.png"><div class="k">ArcSteward EarlyPay · Tameion Agents Hackathon</div><h1>Paid today.<br><em>Not in 60 days.</em></h1><p>An AI treasury agent that pays supplier invoices early when it is worth it, settled in USDC on Arc in seconds, inside limits it cannot break.</p>`), [
-    'Every company pays its suppliers late, and every supplier would give a small discount to be paid today.',
-    'ArcSteward EarlyPay turns that into a deal both sides win, decided by an AI and settled in seconds on Arc.',
+  // ── 1-5. The platform story ──
+  await slideSection('hook', slide(`<img class="coin" src="${BASE}/img/coin.png"><div class="k">ArcSteward · Tameion Agents Hackathon</div><h1>Let AI agents<br><em>handle money safely.</em></h1><p>The spending-control layer for AI agents: company rules enforced on-chain, every decision audited, settled in USDC on Arc in seconds.</p>`), [
+    'Every company wants AI agents running its finance operations: paying bills, buying services, paying suppliers.',
+    'But today no company can safely let an AI agent touch money. ArcSteward fixes that.',
   ]);
-  await slideSection('pain', slide(`<div class="k">The customer and the pain</div><h2>Suppliers wait. <em>Cash sits idle.</em></h2><div class="grid"><div><b>47%</b><span>of US small businesses have invoices more than 30 days overdue</span></div><div><b>$17.5K</b><span>owed on average to small businesses waiting on unpaid invoices</span></div><div><b>$2.77B</b><span>lost in the US in 2024 to "our bank details changed" email fraud</span></div></div><div class="src">Sources: QuickBooks Small Business Late Payments Report 2025 (2,487 US small businesses); FBI IC3 2024 Internet Crime Report.</div>`), [
-    'Our customer is a growing company that pays dozens of suppliers on thirty to sixty day terms.',
-    'Forty seven percent of US small businesses have invoices more than thirty days overdue, and they are owed about seventeen thousand dollars on average.',
-    'Meanwhile the buyer\'s cash sits idle. And in 2024, fake bank details changed emails cost US businesses two point seven seven billion dollars.',
-    'Now companies want AI agents to pay their bills. That makes an agent with payment authority the perfect target for that fraud.',
+  await slideSection('problem', slide(`<div class="k">The problem</div><h2>Agents can act. <em>They can't be trusted with money.</em></h2><div class="rows"><div><b>No hard limits</b><span>give an agent a key and one bad decision or prompt injection can drain the account; limits in a prompt can be talked past</span></div><div><b>Fraud targets automation</b><span>$2.77B lost in the US in 2024 to "our bank details changed" emails (FBI IC3). An agent is easier to fool than a person</span></div><div><b>No audit trail</b><span>finance and auditors cannot see why the AI paid what it paid</span></div><div><b>So humans approve everything</b><span>and the "automation" saves nothing</span></div></div>`), [
+    'There are three gaps.',
+    'First, no hard limits. Give an agent a key, and one bad decision or one prompt injection can drain the account. Limits written in a prompt can be talked past.',
+    'Second, fraud targets automation. Fake bank details changed emails cost US businesses two point seven seven billion dollars in 2024, and an agent is easier to fool than a person.',
+    'Third, there is no audit trail of why the AI paid. So today a human approves every payment, and the automation saves nothing.',
   ]);
-  await slideSection('why-now', slide(`<div class="k">The opportunity</div><h2>Paying early is <em>a return,</em> not a cost.</h2><div class="rows"><div><b>2/10 net 30</b><span>the textbook early-payment discount is worth about 37% a year to the buyer</span></div><div><b>Dynamic discounting</b><span>an existing market estimated in the billions of dollars, built for big enterprises</span></div><div><b>But</b><span>bank rails take days, onboarding takes months, and no AI can be trusted to run it safely</span></div></div>`), [
-    'Paying early is not a cost, it is a return. The textbook two ten net thirty discount is worth about thirty seven percent a year to the buyer.',
-    'Dynamic discounting platforms already sell this to big enterprises, a market estimated in the billions of dollars.',
-    'But they run on slow bank rails, take months to onboard, and none of them lets an AI make the decisions safely.',
+  await slideSection('layer', slide(`<div class="k">The solution</div><h2>ArcSteward: <em>the spending-control layer.</em></h2><div class="rows"><div><b>Company sets the rules</b><span>budget, per-payment and daily limits, approved payees, expiry, instant revoke</span></div><div><b>The vault enforces them</b><span>on-chain on Arc, so the agent cannot exceed them whatever it is told</span></div><div><b>The agent decides</b><span>within those rules, and explains every decision</span></div><div><b>Everything is audited</b><span>a tamper-evident decision log anyone can verify; payments settle in USDC in about a second</span></div></div>`), [
+    'ArcSteward is the spending control layer for AI agents.',
+    'The company sets the rules: a budget, per payment and daily limits, approved payees, an expiry, and an instant off switch.',
+    'A vault on Arc enforces those rules on chain, so the agent cannot exceed them, whatever it is told. Every decision is logged, and payments settle in USDC in about a second.',
   ]);
-  await slideSection('solution', slide(`<div class="k">The solution</div><h2>An AI treasury agent <em>with a vault it cannot break.</em></h2><div class="rows"><div><b>Decides</b><span>discount return vs. holding the cash, upcoming bills and fraud risk, and explains every decision</span></div><div><b>Pays in seconds</b><span>USDC on Arc, from the company's own vault</span></div><div><b>Cannot overspend</b><span>per-payment, daily and total limits enforced on-chain</span></div><div><b>Cannot be redirected</b><span>two keys for every supplier bank account, plus a waiting period</span></div></div>`), [
-    'EarlyPay gives the finance team an AI treasury agent.',
-    'For every invoice it weighs the discount against holding the cash, the bills coming up, and the fraud risk, and explains its decision.',
-    'It pays in seconds from the company\'s own vault, with limits it cannot exceed, and it can only pay accounts that both the supplier and the company approved.',
+  await slideSection('use-cases', slide(`<div class="k">Where businesses use it</div><h2>One control layer, <em>many money workflows.</em></h2><div class="rows"><div><b>Supplier early payment</b><span>EarlyPay: the AI pays invoices early for a discount · <em>live on Arc testnet</em></span></div><div><b>AI buying data &amp; APIs</b><span>pay-per-use purchases over HTTP 402 · <em>live on Arc mainnet</em></span></div><div><b>Contractor &amp; freelancer payouts</b><span>agencies and marketplaces paying approved people within budgets · next</span></div><div><b>Procurement &amp; subscriptions</b><span>per-vendor caps for operations teams · next</span></div><div><b>Agent-to-agent commerce</b><span>one agent hiring another, with a budget · next</span></div></div>`), [
+    'Where do businesses use it? Anywhere money moves.',
+    'Two products are live today. EarlyPay, where the AI pays supplier invoices early for a discount, on Arc testnet. And AI agents buying data and APIs pay per use, live on Arc mainnet.',
+    'Next on the same layer: contractor and freelancer payouts, procurement and subscriptions with per vendor caps, and agents paying other agents.',
   ]);
-  await slideSection('why-arc', slide(`<div class="k">Why Arc and Circle</div><h2>"Paid today" has to mean <em>now.</em></h2><div class="rows"><div><b>Arc</b><span>sub-second settlement, so early payment lands in seconds, not three bank days</span></div><div><b>USDC</b><span>payment and gas in one stable unit, about a cent per payment</span></div><div><b>Programmable limits</b><span>the vault enforces the agent's authority on-chain</span></div><div><b>USYC · EURC</b><span>idle cash earning yield (simulated on testnet) · euro suppliers (next)</span></div></div>`), [
-    'Why Arc and Circle? Early payment only matters if paid today means now. Arc settles in about a second.',
-    'USDC is both the payment and the gas, about a cent per payment, so paying many small invoices early makes sense.',
-    'And the vault enforces the agent\'s authority on chain. Next come euro suppliers with EURC and idle cash earning yield with USYC.',
+  await slideSection('integrations', slide(`<div class="k">Where it plugs in</div><h2>Fits the tools <em>finance teams already use.</em></h2><div class="rows"><div><b>Agent frameworks</b><span>any AI agent can pay from a vault in a few lines with the open-source SDK · <em>available</em></span></div><div><b>Accounting &amp; ERP</b><span>QuickBooks, Xero, NetSuite: invoices in, payments and receipts out · next</span></div><div><b>AP &amp; procurement tools</b><span>ArcSteward as the payment and guardrail backend · next</span></div><div><b>Any wallet or multisig</b><span>the owner can be a Safe; standard EVM, no special wallet needed · <em>available</em></span></div></div>`), [
+    'It plugs into the tools finance teams already use.',
+    'Today, any AI agent can pay from a vault in a few lines with the open source SDK, and the owner can be any wallet, including a multisig.',
+    'Next, accounting and ERP integrations like QuickBooks, Xero and NetSuite, and use as the payment backend for accounts payable and procurement tools.',
+  ]);
+  await slideSection('earlypay-intro', slide(`<div class="k">Demo 1 · EarlyPay</div><h2>The AI pays suppliers early, <em>only when it's worth it.</em></h2><div class="grid"><div><b>47%</b><span>of US small businesses have invoices more than 30 days overdue</span></div><div><b>$17.5K</b><span>owed on average to small businesses waiting on unpaid invoices</span></div><div><b>~37%</b><span>a year: what a standard 2/10 net 30 early-payment discount is worth to the buyer</span></div></div><div class="src">Sources: QuickBooks Small Business Late Payments Report 2025; textbook credit-terms annualisation.</div>`), [
+    'Our first product is EarlyPay. Forty seven percent of US small businesses have invoices more than thirty days overdue, owed about seventeen thousand dollars on average.',
+    'Yet paying early is a return, not a cost: a standard two ten net thirty discount is worth about thirty seven percent a year to the buyer.',
+    'So the agent pays suppliers early, but only when the discount beats holding the cash, and only to verified accounts.',
   ]);
 
   // ── 6. Product tour ──
-  await section('tour-home', 1, {}, async p => {
-    await p.goto(`${BASE}/`, { waitUntil: 'load' }); await p.waitForTimeout(2500); ready();
-    await tour(p, [
-      ['This is the ArcSteward website. The coin is a Byzantine treasurer\'s seal: the treasurer never carried the gold, only a seal saying what he could spend.', '.hero'],
-      ['That is exactly what the vault gives an AI agent: a sealed, revocable spending permission.', '.hero-foot'],
-      ['Every payment passes the vault\'s gate. Allowed payments go through; an attacker\'s payment is stopped.', '#gate'],
-      ['Here the agent\'s real mainnet run replays: it pays for data, then refuses a hidden instruction to pay an attacker.', '#agent'],
-    ], 1200);
-    await p.locator('#agent').scrollIntoViewIfNeeded(); await offCamera(() => p.waitForTimeout(9000));
-    await caption(p, 'Every check is shown, and nothing was lost.', 800);
-  });
   await section('tour-earlypay', 1, {}, async p => {
     await p.goto(`${BASE}/earlypay`, { waitUntil: 'load' }); await p.waitForTimeout(2500); ready();
     await tour(p, [
@@ -332,15 +330,20 @@ async function main() {
     await move(p, row(p, '1'));
     await caption(p, 'Invoice one: two percent for sixty days early is about twelve percent a year, above the hurdle. Paid in USDC on Arc in about a second.', 1500);
     await move(p, row(p, '2'));
-    await caption(p, 'Invoice two: half a percent is only three percent a year, less than the cash earns. The agent holds it and suggests a discount that would work.', 1500);
+    await caption(p, (await has(p, '2', /HOLD/)) ? 'Invoice two: half a percent is only three percent a year, less than the cash earns. The agent holds it and suggests a discount that would work.' : 'Invoice two: half a percent is only three percent a year, less than the cash earns, so the agent does not pay it early and leaves it to finance.', 1500);
     await move(p, row(p, '3'));
-    await caption(p, 'Invoice three: the hidden instruction was flagged and ignored. The decision is based only on the numbers, and the vault could never pay the attacker anyway.', 1500);
+    await caption(p, (await has(p, '3', /PAID/)) ? 'Invoice three: the hidden instruction was flagged and ignored. It was paid on its numbers alone, and the vault could never pay the attacker anyway.' : 'Invoice three: the hidden instruction was flagged. The agent sent it to finance instead of paying, and the vault could never pay the attacker anyway.', 1500);
     await move(p, row(p, '4'));
-    await caption(p, 'Invoice four is above the limit. The agent cannot exceed its budget, so it escalates to finance.');
-    await click(p, row(p, '4').getByRole('button', { name: /Approve & pay/ }));
-    await offCamera(() => p.getByText(/from your wallet to the registered supplier/).first().waitFor({ timeout: 240_000 }));
-    await move(p, p.locator('.notice').last());
-    await caption(p, 'Finance approved and paid it from the company wallet. The agent\'s limits never changed, and the approval is recorded too.', 1200);
+    const payBtn = row(p, '4').getByRole('button', { name: /Approve & pay/ });
+    if (await payBtn.isEnabled().catch(() => false)) {
+      await caption(p, 'Invoice four is above the limit. The agent cannot exceed its budget, so it escalates to finance.');
+      await click(p, row(p, '4').getByRole('button', { name: /Approve & pay/ }));
+      await offCamera(() => p.getByText(/from your wallet to the registered supplier/).first().waitFor({ timeout: 240_000 }));
+      await move(p, p.locator('.notice').last());
+      await caption(p, 'Finance approved and paid it from the company wallet. The agent\'s limits never changed, and the approval is recorded too.', 1200);
+    } else {
+      await caption(p, 'Invoice four is above the limit. The agent cannot exceed its budget, so it does not pay it on its own.', 1200);
+    }
     await p.locator('.stats').scrollIntoViewIfNeeded();
     await caption(p, 'The dashboard shows what was paid early, the discount captured and the days saved.', 1200);
   });
@@ -349,7 +352,8 @@ async function main() {
   await section('supplier-duplicate', 1, { mobile: true, init: supplierInit }, async p => {
     await p.goto(`${BASE}/earlypay/supplier?buyer=Northwind`, { waitUntil: 'load' });
     const paid = p.locator('.item', { hasText: `${INV}-1` }).filter({ hasText: 'PAID' }).first();
-    await paid.waitFor({ timeout: 120_000 }); ready();
+    await offCamera(async () => { for (let k = 0; k < 30 && !(await paid.count()); k++) { await p.waitForTimeout(10_000); if (!(await paid.count())) await p.reload({ waitUntil: 'load' }); } });
+    await paid.waitFor({ timeout: 60_000 }); ready();
     await paid.scrollIntoViewIfNeeded(); await move(p, paid);
     await caption(p, 'On her phone, Asha sees invoice one paid, with a link to the payment on Arc.', 1000);
     await p.locator('.card').nth(1).scrollIntoViewIfNeeded();
@@ -377,10 +381,21 @@ async function main() {
     ], 1000);
     await p.mouse.wheel(0, 900); await p.waitForTimeout(1500);
   });
+  await section('tour-home', 1, {}, async p => {
+    await p.goto(`${BASE}/`, { waitUntil: 'load' }); await p.waitForTimeout(2500); ready();
+    await tour(p, [
+      ['Demo two: the same control layer on Arc mainnet. The coin is a treasurer\'s seal: a treasurer never carried the gold, only a seal saying what he could spend.', '.hero'],
+      ['That is exactly what the vault gives an AI agent: a sealed, revocable spending permission.', '.hero-foot'],
+      ['Every payment passes the vault\'s gate. Allowed payments go through; an attacker\'s payment is stopped.', '#gate'],
+      ['Here the agent\'s real mainnet run replays: it pays for data, then refuses a hidden instruction to pay an attacker.', '#agent'],
+    ], 1200);
+    await p.locator('#agent').scrollIntoViewIfNeeded(); await offCamera(() => p.waitForTimeout(9000));
+    await caption(p, 'Every check is shown, and nothing was lost.', 800);
+  });
   await section('console', 1, {}, async p => {
     await p.goto(`${BASE}/arc`, { waitUntil: 'load' }); await p.waitForTimeout(3000); ready();
     await tour(p, [
-      ['The vault console is where a company creates and funds its vault, sets the agent\'s limits and revokes it at any time. It runs on Arc mainnet.', '.arc-page-heading'],
+      ['This is the vault console on Arc mainnet, where a company creates and funds a vault, sets an agent\'s limits, and can revoke it at any time.', '.arc-page-heading'],
       ['Balance, the agent\'s permission, remaining budget and network, all read from the contract.', '.arc-stat-grid'],
       ['Policy templates make limits a one click choice, and every action links to the Arc explorer.', '#arc-revoke'],
     ], 900);
@@ -405,13 +420,17 @@ async function main() {
     'Under the hood: the supplier signs; a gasless relay writes the offer to the EarlyPay ledger on Arc.',
     'The AI agent reads it, does the math, checks the risks, and decides. Money only moves through the vault, in USDC, and every decision is recorded for audit.',
   ]);
-  await slideSection('model', slide(`<div class="k">Business model (planned)</div><h2>A share of the <em>discount captured.</em></h2><div class="rows"><div><b>Revenue</b><span>about 10% of each early-payment discount; the buyer keeps the rest</span></div><div><b>No custody</b><span>funds stay in the customer's own vault; we never hold money</span></div><div><b>Customers</b><span>small and mid-size companies that early-payment platforms ignore today</span></div></div>`), [
-    'Our plan: take about ten percent of the discount the buyer captures, without ever holding customer funds.',
-    'Instant USDC lets us bring early payment to the small and mid size companies that today\'s platforms ignore.',
+  await slideSection('model', slide(`<div class="k">Business model (planned)</div><h2>A platform fee, <em>plus a share of the savings.</em></h2><div class="rows"><div><b>ArcSteward platform</b><span>per-vault subscription for teams running agents with spending authority</span></div><div><b>EarlyPay</b><span>about 10% of each early-payment discount captured; the buyer keeps the rest</span></div><div><b>No custody</b><span>funds stay in the customer's own vault; we never hold money</span></div></div>`), [
+    'Our planned business model: a per vault subscription for teams running agents with spending authority.',
+    'And for EarlyPay, about ten percent of the discount the buyer captures. We never hold customer funds.',
   ]);
-  await slideSection('close', slide(`<img class="coin" src="${BASE}/img/coin.png"><div class="k">Live on Arc testnet</div><h2>Suppliers paid today. <em>Buyers earn on every invoice.</em></h2><p>arcsteward.vercel.app/earlypay · github.com/Lakshmikanth-3/ArcSteward<br>Next: first company pilots · euro suppliers with EURC · idle cash in USYC</p>`), [
-    'EarlyPay is live on Arc testnet and ready for its first company pilots.',
-    'ArcSteward EarlyPay. Suppliers get paid today, buyers earn on every invoice.',
+  await slideSection('why-arc', slide(`<div class="k">Why Arc and Circle</div><h2>Built for <em>machine-speed money.</em></h2><div class="rows"><div><b>Arc</b><span>sub-second settlement: agents can pay and be paid instantly</span></div><div><b>USDC</b><span>payment and gas in one stable unit, about a cent per payment</span></div><div><b>Programmable limits</b><span>rules enforced by contracts, not by trust in the AI</span></div><div><b>EURC · USYC</b><span>euro payouts and yield on idle cash (next; USYC simulated on testnet)</span></div></div>`), [
+    'Why Arc and Circle? Agents need machine speed money: Arc settles in about a second, and USDC is both the payment and the gas, at about a cent.',
+    'Contracts enforce the rules, not trust in the AI. Next come euro payouts with EURC and yield on idle cash with USYC.',
+  ]);
+  await slideSection('close', slide(`<img class="coin" src="${BASE}/img/coin.png"><div class="k">ArcSteward</div><h2>AI agents that handle money, <em>safely.</em></h2><p>EarlyPay live on Arc testnet · agent payments live on Arc mainnet<br>arcsteward.vercel.app · github.com/Lakshmikanth-3/ArcSteward<br>Next: first company pilots · accounting integrations · EURC and USYC</p>`), [
+    'ArcSteward is live, open source, and ready for its first company pilots.',
+    'ArcSteward. Let AI agents handle money, safely.',
   ], 1000);
   await browser.close();
 

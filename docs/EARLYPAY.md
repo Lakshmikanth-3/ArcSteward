@@ -59,7 +59,7 @@ All money is computed in code (`app/src/lib/earlypay/math.ts`, USDC base units a
 - proposed discount = smallest discount that clears the hurdle, clamped to the owner's min/max
 
 Policy (the ceiling): any reject flag → REJECT; any escalate flag → ESCALATE; due now → HOLD; APR < hurdle → HOLD (with a counter-offer); runway < buffer → HOLD; else PAY_EARLY.
-The LLM (OpenAI-compatible; Groq `gpt-oss-120b` by default) receives the computed context and may choose the ceiling or something more cautious (`PAY_EARLY → HOLD/ESCALATE`, `HOLD → ESCALATE`, `ESCALATE → REJECT`). Anything else, malformed output or an LLM failure falls back to the policy decision, and the guardrail is written into the decision note. Before paying, the agent simulates `ArcVault.pay`; a refusal becomes an escalation.
+The LLM (OpenAI-compatible; Groq `gpt-oss-120b` by default) receives the computed context and may choose the ceiling or something more cautious (`PAY_EARLY → HOLD/ESCALATE`, `HOLD → ESCALATE`); an escalation always stays with the owner, and REJECT is reserved for hard rule violations. Anything else, malformed output or an LLM failure falls back to the policy decision, and the guardrail is written into the decision note. Before paying, the agent simulates `ArcVault.pay`; a refusal becomes an escalation.
 
 ## 5. Threat model
 
