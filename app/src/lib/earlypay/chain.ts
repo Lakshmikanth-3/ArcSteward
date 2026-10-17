@@ -14,6 +14,7 @@ type Decoded = Log & { eventName: string; args: Record<string, unknown>; transac
 // The newest blocks are re-scanned every time: load-balanced RPC nodes can lag and return
 // incomplete logs near the head, so nothing is treated as final until it is RESCAN blocks deep.
 const RESCAN = 64n;
+const PARALLEL = 5;
 const cache = new Map<string, { next: bigint; events: Decoded[]; seen: Set<string>; pending?: Promise<void> }>();
 
 async function ledgerEvents(pub: Pub, ledger: Hex, fromBlock: bigint): Promise<Decoded[]> {
@@ -24,9 +25,15 @@ async function ledgerEvents(pub: Pub, ledger: Hex, fromBlock: bigint): Promise<D
   const entry = c;
   entry.pending = (async () => {
     const latest = await pub.getBlockNumber();
-    for (let from = entry.next; from <= latest; from += CHUNK) {
-      const to = from + CHUNK - 1n > latest ? latest : from + CHUNK - 1n;
-      const raw = await pub.getLogs({ address: ledger, fromBlock: from, toBlock: to });
+    const ranges: [bigint, bigint][] = [];
+    for (let from = entry.next; from <= latest; from += CHUNK) ranges.push([from, from + CHUNK - 1n > latest ? latest : from + CHUNK - 1n]);
+    // A few ranges at a time: fast on a cold start, gentle on the RPC's rate limit.
+    const results: Log[][] = new Array(ranges.length);
+    let cursor = 0;
+    await Promise.all(Array.from({ length: Math.min(PARALLEL, ranges.length) }, async () => {
+      while (cursor < ranges.length) { const i = cursor++; results[i] = await pub.getLogs({ address: ledger, fromBlock: ranges[i][0], toBlock: ranges[i][1] }); }
+    }));
+    for (const raw of results) {
       for (const e of parseEventLogs({ abi: ledgerAbi, logs: raw }) as unknown as Decoded[]) {
         const key = `${e.transactionHash}:${e.logIndex}`;
         if (!entry.seen.has(key)) { entry.seen.add(key); entry.events.push(e); }
