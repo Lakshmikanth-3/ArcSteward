@@ -1,6 +1,31 @@
-# ArcSteward on Arc
+# ArcSteward: let AI pay your bills, safely
 
-> Formerly **Velo402**. The live URL (`velo402.vercel.app`), the SDK package (`@velo402/arc-sdk`) and the HTTP 402 payment scheme (`velo402-vault`) keep their original identifiers so deployed agents and on-chain records keep working.
+**An AI treasury agent that pays supplier invoices early in USDC on Arc, only when the deal is good, only to the supplier's verified account, and only inside limits the company's wallet enforces on-chain. Every decision is recorded publicly.**
+
+**Live:** https://arcsteward.vercel.app/earlypay · **Demo video:** _link coming_ · **Built for:** Tameion Agents Hackathon (Canteen × Circle × Arc)
+
+### The problem
+Businesses want AI agents to pay their bills, but today that is unsafe. An agent can be tricked into overspending, fooled by a fake "our bank account changed" email (that scam cost US businesses **$2.77B in 2024**, FBI IC3), and nobody can check later why it paid. Meanwhile **47%** of US small businesses wait more than 30 days to get paid (QuickBooks 2025).
+
+### What happens in the product
+1. **Supplier (phone, no gas, no app):** signs up once with a payout address, then signs an invoice: "2 USDC, due in 60 days, 2% off if paid today".
+2. **AI agent:** computes the discount's annual return (2% for 60 days ≈ 12%/yr) against what the cash earns held, checks the liquidity buffer and risk flags (new supplier, changed bank account, duplicate, prompt injection in the invoice, over-limit), then decides **PAY EARLY · HOLD · ESCALATE · REJECT** and writes its reason to a hash-chained log on Arc.
+3. **Vault:** the payment leaves the company's ArcSteward vault only if it is within the agent's per-payment, daily and total limits and goes to an owner-approved payout (two-key rule). The USDC transfer is visible on the [Arc explorer](https://explorer.testnet.arc.io).
+4. **Owner:** approves new suppliers with one click, pays over-limit invoices from their own wallet (recorded as HUMAN_APPROVED), and can revoke the agent at any time.
+5. **Anyone:** verifies every decision on [`/earlypay/audit`](https://arcsteward.vercel.app/earlypay/audit), the hash chain is recomputed in the browser.
+
+### Try it in 2 minutes
+- Supplier: https://arcsteward.vercel.app/earlypay/supplier (register, send an invoice)
+- Company: https://arcsteward.vercel.app/earlypay/buyer (agent decisions, approve supplier, run the agent)
+- Audit: https://arcsteward.vercel.app/earlypay/audit
+
+### Traction (from on-chain events, `pnpm earlypay:stats`)
+On Arc testnet: 108 signed invoices, 32 paid early by the agent (87.81 USDC, 60 days early on average), 12 held, 26 attacks or bad invoices rejected, 96 escalations reviewed by the owner, hash chain valid on every vault. Before Tameion, the same vault let an AI agent pay in real USDC on **Arc mainnet** (receipts below). Full table: [`docs/TRACTION.md`](docs/TRACTION.md).
+
+### Circle / Arc stack used
+USDC (payments and gas) · Arc smart contracts (vault limits, EIP-712 supplier registry and offers, decision log) · gasless relay for suppliers · USYC hold-yield (simulated on testnet, needs allowlisting) · EURC next.
+
+> Formerly **Velo402**. The SDK package (`@velo402/arc-sdk`) and HTTP 402 scheme (`velo402-vault`) keep their original identifiers so deployed agents keep working.
 
 ## EarlyPay (built during Tameion, Sep 27 – Oct 17)
 
@@ -22,9 +47,9 @@ A supplier signs an invoice and an early-payment discount from a phone (no gas, 
 
 **ArcSteward gives autonomous AI agents restricted authority to spend USDC through an owner-controlled vault.** Owners define spending limits, authorized recipients and expiration rules, and can revoke permissions. The Arc deployment provides programmable, policy-enforced payments with verifiable on-chain transactions.
 
-- **Live app (Arc mainnet):** https://velo402.vercel.app/arc
-- **Security proof:** https://velo402.vercel.app/security
-- **Developers / SDK / HTTP 402 API:** https://velo402.vercel.app/developers
+- **Live app (Arc mainnet):** https://arcsteward.vercel.app/arc
+- **Security proof:** https://arcsteward.vercel.app/security
+- **Developers / SDK / HTTP 402 API:** https://arcsteward.vercel.app/developers
 - **Builder:** https://github.com/Lakshmikanth-3
 
 ## The website
@@ -62,7 +87,7 @@ ArcSteward was built and submitted to [Arc Microgrants](https://dorahacks.io/hac
 | Program requirement | How ArcSteward meets it | Proof |
 | --- | --- | --- |
 | Deployed and working on Arc mainnet | Factory, registry and a funded vault on chain 5042; real agent payments | [Factory](https://explorer.arc.io/address/0x333af5f858a1cc267b6ab16e83bcb2fe28f8b2b1) · [agent payment](https://explorer.arc.io/tx/0xee745efaace3a156f09ae07b4d9e1e47204075d8cf192114c378f01e6ee1eedd) |
-| Live link reviewers can open | Web console defaults to Arc mainnet | https://velo402.vercel.app/arc |
+| Live link reviewers can open | Web console defaults to Arc mainnet | https://arcsteward.vercel.app/arc |
 | Public repo | This repository, MIT licensed | [LICENSE](LICENSE) |
 | Short description and Arc use | Top of this README and the submission answers | [docs/ARC_MICROGRANTS_SUBMISSION.md](docs/ARC_MICROGRANTS_SUBMISSION.md) |
 | Public builder profile | GitHub | https://github.com/Lakshmikanth-3 |
@@ -283,7 +308,7 @@ sequenceDiagram
 
 ## Security: the agent cannot be manipulated into overspending
 
-The agent key can call only `pay()` and `topUpGas()`, and both enforce the owner's policy on-chain. Full threat model: [`/security`](https://velo402.vercel.app/security) and [`docs/ARC_SECURITY.md`](docs/ARC_SECURITY.md).
+The agent key can call only `pay()` and `topUpGas()`, and both enforce the owner's policy on-chain. Full threat model: [`/security`](https://arcsteward.vercel.app/security) and [`docs/ARC_SECURITY.md`](docs/ARC_SECURITY.md).
 
 | Attack | Blocked by |
 | --- | --- |
@@ -328,7 +353,7 @@ X402_BASE_URL=http://localhost:3000 pnpm arc:testnet:x402   # pay-per-request AP
 pnpm arc:testnet:browser # clicks through the live site on Arc testnet
 pnpm arc:ready           # everything above + read-only mainnet preflight -> docs/MAINNET_READINESS.md
 pnpm arc:test:ui-full    # every console button and page link, in a real browser
-E2E_BASE_URL=https://velo402.vercel.app pnpm test:e2e e2e/arc-live.spec.ts   # live site checks
+E2E_BASE_URL=https://arcsteward.vercel.app pnpm test:e2e e2e/arc-live.spec.ts   # live site checks
 ```
 
 ### Latest test run
@@ -346,7 +371,7 @@ E2E_BASE_URL=https://velo402.vercel.app pnpm test:e2e e2e/arc-live.spec.ts   # l
 
 1. Install an EVM wallet (MetaMask or Rabby) and create **two** accounts: *Owner* and *Agent*.
 2. Get free test USDC for both from https://faucet.circle.com (choose Arc Testnet).
-3. Open https://velo402.vercel.app/testnet and click **Connect EVM wallet** with the *Owner* account. If asked, click **Switch to Arc Testnet** and approve it in the wallet.
+3. Open https://arcsteward.vercel.app/testnet and click **Connect EVM wallet** with the *Owner* account. If asked, click **Switch to Arc Testnet** and approve it in the wallet.
 4. **Create my vault** and confirm. The vault address fills in.
 5. Enter `1` as the amount, then **Approve exact amount and deposit**. Vault balance shows 1 USDC.
 6. Pick a policy template or paste the *Agent* address, set budget `0.5`, per payment `0.2`, put the *Owner* address as the permitted recipient, choose an expiry an hour ahead, then **Authorize / update**.
