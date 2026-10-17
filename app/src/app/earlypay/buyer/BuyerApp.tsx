@@ -180,6 +180,7 @@ export default function BuyerApp() {
           <span className="muted">{usdc(face)} USDC · {o.offer.discountBps / 100}% discount → {usdc(payout)} USDC now · due {new Date(Number(o.offer.dueDate) * 1000).toISOString().slice(0, 10)}</span>
           {o.meta.description && <span className="muted">“{o.meta.description}”</span>}
           {latest?.note && <p className="reason"><b>{latest.note.source === 'owner' ? 'Owner' : 'Agent'}:</b> {latest.note.reason}{latest.note.overridden ? ` (${latest.note.overridden})` : ''}</p>}
+          {latest?.decision === 'HOLD' && Number(latest.note?.inputs?.proposedDiscountBps ?? 0) > o.offer.discountBps && <p className="reason"><b>Counter-offer sent:</b> the agent will pay today at {Number(latest.note?.inputs?.proposedDiscountBps) / 100}% off.</p>}
           {latest?.note?.inputs && Array.isArray((latest.note.inputs as { flags?: unknown[] }).flags) && ((latest.note.inputs as { flags: { code: string; detail: string }[] }).flags).length > 0 && <span className="muted">Flags: {((latest.note.inputs as { flags: { code: string }[] }).flags).map(f => f.code).join(', ')}</span>}
           {settled && <span>Paid {fmt(settled.amount)} USDC · <a className="tx" href={txUrl(settled.paymentTx)} target="_blank" rel="noreferrer">payment ↗</a></span>}
           {canResolve && <div className="row-actions">

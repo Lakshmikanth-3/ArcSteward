@@ -50,7 +50,7 @@ export function policyDecision(ctx: DecisionContext): { decision: DecisionResult
   const escalations = ctx.flags.filter(f => f.severity === 'escalate');
   if (escalations.length) return { decision: 'ESCALATE', reason: `Needs the owner: ${escalations.map(f => f.detail).join(' ')}` };
   if (ctx.daysEarly <= 0) return { decision: 'HOLD', reason: 'Invoice is already due; pay it on schedule rather than as an early payment.' };
-  if (ctx.discountAprBps < ctx.hurdleAprBps) return { decision: 'HOLD', reason: `A ${pct(ctx.discountBps)} discount for paying ${ctx.daysEarly} days early is ${pct(ctx.discountAprBps)} APR, below the ${pct(ctx.hurdleAprBps)} hurdle (${pct(ctx.holdYieldBps)} ${ctx.holdYieldSource} hold yield + margin). Holding the cash is better; a ${pct(ctx.proposedDiscountBps)} discount would clear it.` };
+  if (ctx.discountAprBps < ctx.hurdleAprBps) return { decision: 'HOLD', reason: `A ${pct(ctx.discountBps)} discount for paying ${ctx.daysEarly} days early is ${pct(ctx.discountAprBps)} APR, below the ${pct(ctx.hurdleAprBps)} hurdle (${pct(ctx.holdYieldBps)} ${ctx.holdYieldSource} hold yield + margin). Holding the cash is better. Counter-offer: at ${pct(ctx.proposedDiscountBps)} off the agent pays today.` };
   if (!ctx.liquidityOk) return { decision: 'HOLD', reason: `Paying now would leave ${ctx.runwayAfter} USDC after 30-day obligations, below the ${ctx.liquidityBuffer} USDC buffer.` };
   return { decision: 'PAY_EARLY', reason: `${pct(ctx.discountBps)} for ${ctx.daysEarly} days early is ${pct(ctx.discountAprBps)} APR, above the ${pct(ctx.hurdleAprBps)} hurdle; ${ctx.runwayAfter} USDC stays after 30-day obligations; supplier verified and approved.` };
 }

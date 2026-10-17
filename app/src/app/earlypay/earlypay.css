@@ -27,6 +27,7 @@
 .ep .calc b { color: #f0a878; font-weight: 500; }
 .ep .notice { margin-top: 14px; padding: 12px 14px; border-left: 3px solid var(--copper); background: #b8561f12; font-size: 13px; color: var(--ink-2); }
 .ep .notice.bad { border-color: #a8321f; background: #a8321f14; color: #7a2416; }
+.ep .notice.counter { border-color: var(--copper); background: #b8561f1f; color: var(--ink); }
 .ep .notice.good { border-color: #2f6b3a; background: #2f6b3a12; color: #234f2b; }
 .ep .mono { font-family: var(--mono); font-size: 12px; overflow-wrap: anywhere; }
 .ep a.tx { color: var(--copper); border-bottom: 1px dashed currentColor; font-size: 12px; }

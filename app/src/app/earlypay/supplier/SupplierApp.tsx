@@ -103,6 +103,18 @@ export default function SupplierApp() {
     setTimeout(reload, 1500);
   });
 
+  /** Accept the agent's counter-offer: re-sign the same invoice at the discount the agent said it would pay today. */
+  const acceptCounter = (o: (typeof mine)[number], newBps: number) => run(`counter-${o.offerHash}`, async () => {
+    if (!account || !reg?.registered) throw new Error('Register first.');
+    const offer = { vault: o.offer.vault as Hex, supplier: o.offer.supplier as Hex, invoiceHash: o.offer.invoiceHash as Hex, faceAmount: BigInt(o.offer.faceAmount), discountBps: newBps, payout: reg.payout, dueDate: BigInt(o.offer.dueDate), expiry: BigInt(now + 7 * 86400) };
+    const signature = await account.signTypedData({ domain: domain(arcTestnet.id, ledger), types: offerTypes, primaryType: 'Offer', message: offer });
+    const meta = JSON.stringify({ ...o.meta, notes: `Counter-offer accepted: ${pct(newBps)} (was ${pct(o.offer.discountBps)}).` });
+    const { tx } = await relay({ kind: 'offer', offer, signature, meta });
+    void fetch('/api/earlypay/run', { method: 'POST' }).then(() => reload()).catch(() => {});
+    setMsg({ kind: 'good', text: `Counter-offer accepted: ${o.meta.number ?? 'invoice'} re-sent at ${pct(newBps)}. The agent is deciding now. Tx ${short(tx)}` });
+    setTimeout(reload, 1500);
+  })();
+
   const extract = run('extract', async () => {
     const res = await fetch('/api/earlypay/extract', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ text: paste }) });
     const out = await res.json();
@@ -179,6 +191,15 @@ export default function SupplierApp() {
           <div className="item-top"><h3>{o.meta.number ?? short(o.offer.invoiceHash)}</h3><DecisionTag d={latest?.decision} settled={!!settled} /></div>
           <span className="muted">{fmt(o.offer.faceAmount)} USDC · {o.offer.discountBps / 100}% early-pay discount · due {new Date(Number(o.offer.dueDate) * 1000).toISOString().slice(0, 10)}</span>
           {latest?.note?.reason && <p className="reason">Agent: {latest.note.reason}</p>}
+          {(() => {
+            const counter = Number(latest?.note?.inputs?.proposedDiscountBps ?? 0);
+            const superseded = mine.some(x => x.offer.invoiceHash === o.offer.invoiceHash && x.offer.discountBps > o.offer.discountBps);
+            if (latest?.decision !== 'HOLD' || settled || superseded || !(counter > o.offer.discountBps)) return null;
+            return <div className="notice counter">
+              <b>Counter-offer from the agent:</b> offer <b>{pct(counter)}</b> instead of {pct(o.offer.discountBps)} and it pays you <b>{usdc(earlyPayout(BigInt(o.offer.faceAmount), counter))} USDC today</b>, instead of waiting until the due date.
+              <div className="row-actions"><button className="btn small" disabled={!!busy} onClick={() => acceptCounter(o, counter)}>{busy === `counter-${o.offerHash}` ? 'Sending…' : `Accept ${pct(counter)} & get paid today`}</button></div>
+            </div>;
+          })()}
           {settled && <p className="reason">Paid <b>{fmt(settled.amount)} USDC</b> to {short(settled.payout)} · <a className="tx" href={txUrl(settled.paymentTx)} target="_blank" rel="noreferrer">payment on Arc ↗</a></p>}
           <a className="tx" href={txUrl(o.tx)} target="_blank" rel="noreferrer">signed offer on Arc ↗</a>
         </article>;
