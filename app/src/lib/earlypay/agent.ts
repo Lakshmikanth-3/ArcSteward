@@ -99,10 +99,27 @@ export class EarlyPayAgent {
     return this.write('recordDecision', [this.vault, item.offer.invoiceHash, item.offerHash, DECISIONS.indexOf(decision), inputs, prev, note]);
   }
 
+  /** Links settlements a previous run paid but could not record (e.g. the agent ran out of gas after paying):
+   * finds the vault's Paid event for each unsettled PAY_EARLY invoice and records it. Never pays again. */
+  async reconcile(decisions: Awaited<ReturnType<typeof fetchDecisions>>, settled: Set<string>) {
+    for (const d of decisions.filter(x => x.decision === 'PAY_EARLY' && !settled.has(x.invoiceHash.toLowerCase()))) {
+      try {
+        const head = await this.pub.getBlockNumber();
+        const to = d.block + 8000n < head ? d.block + 8000n : head;
+        const paid = await this.pub.getContractEvents({ address: this.vault, abi: vaultAbi, eventName: 'Paid', args: { paymentId: d.invoiceHash }, fromBlock: d.block, toBlock: to });
+        const hit = paid[0];
+        if (!hit) continue;
+        await this.write('recordSettlement', [this.vault, d.invoiceHash, hit.args.recipient as Hex, hit.args.amount as bigint, hit.transactionHash]);
+        settled.add(d.invoiceHash.toLowerCase());
+      } catch { /* retried on the next run */ }
+    }
+  }
+
   async runOnce(log: (r: RunResult) => void = r => console.log(JSON.stringify(r))) {
-    const { offers, open, latest } = await this.pending();
+    const { offers, open, latest, decisions } = await this.pending();
     const settlements = await fetchSettlements(this.pub, this.ledger, this.from, this.vault);
     const settled = new Set(settlements.map(s => s.invoiceHash.toLowerCase()));
+    await this.reconcile(decisions, settled);
     const history = new Map<string, bigint[]>();
     for (const s of settlements) { const o = offers.find(x => x.offer.invoiceHash.toLowerCase() === s.invoiceHash.toLowerCase()); if (o) { const k = o.offer.supplier.toLowerCase(); history.set(k, [...(history.get(k) ?? []), o.offer.faceAmount]); } }
     const results: RunResult[] = [];
