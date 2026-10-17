@@ -31,11 +31,11 @@ export default function EarlyPayLanding() {
     <section className="card">
       <h2>The problem</h2>
       <div className="pain">
-        <article><b>59%</b><h3>wait 30+ days</h3><p>of small businesses had invoices overdue 30 days or more, up from 47%. Manual processes are the top internal cause of late outgoing payments.</p></article>
+        <article><b>47%</b><h3>wait 30+ days</h3><p>of US small businesses have invoices more than 30 days overdue; those owed money are owed about $17,500 on average.</p></article>
         <article><b>~0%</b><h3>on idle cash</h3><p>The buyer paying in 60 days keeps that cash in accounts that earn almost nothing in the meantime.</p></article>
-        <article><b>$3.05B</b><h3>redirected</h3><p>reported US losses to business email compromise in 2025: &quot;our bank details changed, pay this account&quot;. An AI agent with payment authority is the next target.</p></article>
+        <article><b>$2.77B</b><h3>redirected</h3><p>lost in the US in 2024 to business email compromise: &quot;our bank details changed, pay this account&quot;. An AI agent with payment authority is the next target.</p></article>
       </div>
-      <p className="src">Sources as cited: QuickBooks Late Payments Report 2026; FBI IC3 2025 report.</p>
+      <p className="src">Sources: QuickBooks Small Business Late Payments Report 2025 (2,487 US small businesses); FBI IC3 2024 Internet Crime Report.</p>
     </section>
 
     <section className="card">

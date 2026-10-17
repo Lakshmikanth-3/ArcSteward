@@ -4,7 +4,7 @@ Record on Arc testnet. Before recording: run `pnpm earlypay:stats` for current n
 
 | Time | Screen | Say |
 | --- | --- | --- |
-| 0:00–0:25 | `/earlypay` landing, the three numbers | "Suppliers wait 60 days to get paid. 59% of small businesses have invoices 30-plus days overdue. Meanwhile buyers' cash sits idle, and about $3 billion a year is lost to fake 'our bank details changed' emails. Now companies want AI agents paying bills: the perfect target for that fraud." |
+| 0:00–0:25 | `/earlypay` landing, the three numbers | "Suppliers wait 60 days to get paid. 47% of US small businesses have invoices more than 30 days overdue. Meanwhile buyers' cash sits idle, and $2.77 billion was lost in the US in 2024 to fake 'our bank details changed' emails. Now companies want AI agents paying bills: the perfect target for that fraud." |
 | 0:25–0:45 | Landing hero, then "How it works" | "ArcSteward EarlyPay is an AI treasury agent that pays supplier invoices early in exchange for a discount, only when the math beats holding the cash, through a vault whose limits it cannot break." |
 | 0:45–1:05 | Phone: `/earlypay/supplier` | Register in one tap (name and wallet address, no gas). Send invoice: 1 USDC, due in 60 days, 2% discount. Point at "Paid today: 0.98 USDC… 12.17% a year". Sign and send. |
 | 1:05–1:25 | `/earlypay/buyer` | "The supplier is new, so the agent escalates: two-key rule." Click **Approve supplier**, then **Run the agent now**. The invoice turns PAID; read the agent's reason: "12.17% APR above the 6.5% hurdle, runway OK, supplier verified." Open the explorer link: settled in about a second. |

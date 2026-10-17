@@ -6,10 +6,10 @@ Built during the Tameion Agents Hackathon (Sep 27 – Oct 17, 2026) on top of th
 
 ## 1. Problem
 
-- **Long payment terms starve suppliers.** Buyers pay on 30–90 day terms; small businesses and freelancers wait. (QuickBooks Late Payments Report 2026, as cited: 59% of small businesses had invoices 30+ days overdue.)
+- **Long payment terms starve suppliers.** Buyers pay on 30–90 day terms; small businesses and freelancers wait. (QuickBooks Small Business Late Payments Report 2025: 47% of 2,487 US small businesses had invoices more than 30 days overdue; those owed money were owed about $17,500 on average.)
 - **The buyer's cash sits idle** for those 60 days, earning little.
-- **Payment redirection fraud.** "Our bank details changed, pay this new account" (business email compromise) caused about $3.05B of reported US losses in 2025 (FBI IC3, as cited). An AI agent with payment authority is an obvious new target: one injected email can tell it to pay someone else.
-- **Early-payment ("dynamic discounting") platforms** exist for enterprises, but run on slow bank rails, need heavy onboarding and do not let an AI agent decide safely.
+- **Payment redirection fraud.** "Our bank details changed, pay this new account" (business email compromise) caused $2.77B of reported US losses in 2024, the second-largest loss category (FBI IC3 2024). An AI agent with payment authority is an obvious new target: one injected email can tell it to pay someone else.
+- **Early payment is a known return:** standard "2/10 net 30" terms are worth about 37% a year to the buyer (simple annualisation). **Dynamic discounting platforms** (an estimated $2–6B market in 2025, estimates vary by scope) exist for enterprises, but run on slow bank rails, need heavy onboarding and do not let an AI agent decide safely.
 
 If settlement is instant and nearly free (Arc + USDC), and an agent decides *which* invoices are worth paying early under limits it cannot exceed, early payment becomes continuous, automatic and safe.
 
