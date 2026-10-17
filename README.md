@@ -9,7 +9,7 @@ Safety is what lets it act alone: suppliers sign their own payout address, the v
 | | |
 | --- | --- |
 | **Live app** | https://arcsteward.vercel.app/earlypay (Arc testnet) |
-| **Demo video** | _link coming_ |
+| **Demo video** | https://youtu.be/e9RG-Uaeqkw |
 | **Supplier page** (phone) | https://arcsteward.vercel.app/earlypay/supplier |
 | **Company page** | https://arcsteward.vercel.app/earlypay/buyer |
 | **Public audit** | https://arcsteward.vercel.app/earlypay/audit |
@@ -235,6 +235,7 @@ pnpm earlypay:stats         # traction numbers from chain events
 | Suite | Latest result |
 | --- | --- |
 | `arc:test` | 20 + 8 pass |
+| `pnpm audit --prod` | no known vulnerabilities (Next.js 16.3.8) |
 | `earlypay:test` | 8 + 6 pass |
 | `earlypay:testnet:e2e` | 14 / 14 pass |
 | `earlypay:live:browser` | all steps pass |

@@ -72,7 +72,7 @@ https://arcsteward.vercel.app/earlypay
 
 ## Project Video Demo
 
-TODO: upload `demo/earlypay/ArcSteward_EarlyPay_Demo_3min.mp4` (2:45) to YouTube (unlisted) or Loom and paste the link. The full 9:27 walkthrough is `ArcSteward_EarlyPay_Demo.mp4`.
+https://youtu.be/e9RG-Uaeqkw
 
 ## Arc OSS
 

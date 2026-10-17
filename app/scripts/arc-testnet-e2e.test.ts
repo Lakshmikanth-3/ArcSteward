@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any -- generic contract calls over several ABIs in a test */
 // Full Arc testnet end-to-end suite. Every run uses a fresh owner/agent/vault, funded from the
 // dedicated testnet owner in .env.arc-testnet. Run: pnpm arc:testnet:e2e
 import { test } from 'node:test';
