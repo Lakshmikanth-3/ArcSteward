@@ -52,9 +52,11 @@ Proof: testnet end-to-end, 14/14 steps with real transactions (pay early, hold, 
 
 ## Traction
 
-TODO, replace with the output of `pnpm earlypay:stats` (the "Real usage" column) right before submitting. Report only real people; the repo separates automated test runs from real usage.
+Numbers from `pnpm earlypay:stats` (on-chain events only), Oct 17 2026:
 
-Current honest status: the product went live at arcsteward.vercel.app on Oct 17. Real usage so far: **0** suppliers outside the team (all activity so far is automated testing: 58 test invoices, 25 paid). Add: number of real suppliers onboarded, invoices submitted and paid early, USDC paid, any feedback quotes, GitHub stars and social posts.
+- Real usage (outside the team): 0 suppliers so far; product went live at arcsteward.vercel.app on Oct 17. TODO: update if real suppliers onboard before submitting.
+- Automated testing on Arc testnet: 108 signed invoices from 42 test suppliers across 8 buyer vaults; 32 paid early by the agent (87.81 USDC, 60 days early on average, 1.79 USDC discount captured); 12 held (discount below hurdle); 26 attacks / bad invoices rejected; 96 escalations (16 owner-approved, 16 declined); decision hash chain valid on every vault.
+- Earlier ArcSteward vault: an AI agent paying on Arc mainnet in real USDC under on-chain limits.
 
 ## Project Source Code
 
@@ -69,7 +71,7 @@ https://arcsteward.vercel.app/earlypay
 
 ## Project Video Demo
 
-TODO: upload `demo/earlypay/ArcSteward_EarlyPay_Demo.mp4` to YouTube (unlisted) or Loom and paste the link.
+TODO: upload `demo/earlypay/ArcSteward_EarlyPay_Demo_3min.mp4` (2:45) to YouTube (unlisted) or Loom and paste the link. The full 9:27 walkthrough is `ArcSteward_EarlyPay_Demo.mp4`.
 
 ## Arc OSS
 
